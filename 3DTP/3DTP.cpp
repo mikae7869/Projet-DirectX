@@ -53,6 +53,15 @@ D3DXHANDLE	hWorldViewProj;
 D3DXHANDLE	hDiffuseMap;
 
 // VERTEX DECLARATION
+D3DVERTEXELEMENT9 dwDecl3[] =
+{
+    { 0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0 },
+    { 0, 12, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0 }, 
+    { 0, 20, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL, 0 },
+	D3DDECL_END()
+};
+
+// VERTEX DECLARATION
 IDirect3DVertexDeclaration9* ppDecl;
 
 ////////////////////////////////////////////// forward declarations
@@ -63,6 +72,7 @@ LPD3DXMESH CreateMappedSphere(LPDIRECT3DDEVICE9, float, UINT, UINT);
 // DirectX functions
 bool initDirect3D();   
 void render(void);
+void Release(void);
 
 //camera functions
 void createCamera(float, float);
@@ -91,12 +101,7 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
     MSG msg;
     ZeroMemory( &msg, sizeof(msg) );
 	
-	D3DVERTEXELEMENT9 dwDecl3[] =
-	{
-		{ 0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0 },
-		{ 0, 12, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0 },
-		D3DDECL_END()
-	};
+	
 
 	pd3dDevice->CreateVertexDeclaration(dwDecl3, &ppDecl);
 
@@ -127,13 +132,7 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
             render();
         }
     }
-
-    // release the device and the direct3D object
-    if (pd3dDevice != NULL)
-        pd3dDevice->Release();
-
-    if (pD3D != NULL)
-        pD3D->Release();
+	Release();
        
     return (int) msg.wParam;
 }
@@ -402,6 +401,8 @@ void render(void)
     pSunMesh->Release();
     pPlanetMesh->Release();
     pMoonMesh->Release();
+	ppVertexBuffer->Release();
+	ppIndexBuffer->Release();
 }
 
 /*************************************************************************
@@ -448,7 +449,8 @@ LPD3DXMESH CreateMappedSphere(LPDIRECT3DDEVICE9 pDev, float fRad, UINT slices, U
     // create a copy of the mesh with texture coordinates,
     // since the D3DX function doesn't include them
     LPD3DXMESH texMesh;
-    if (FAILED(mesh->CloneMeshFVF(D3DXMESH_SYSTEMMEM, FVF_VERTEX, pDev, &texMesh)))
+	//if (FAILED(mesh->CloneMeshFVF(D3DXMESH_SYSTEMMEM, FVF_VERTEX, pDev, &texMesh)))
+	if (FAILED(mesh->CloneMesh(D3DXMESH_SYSTEMMEM, dwDecl3, pDev, &texMesh)))
         // failed, return un-textured mesh
         return mesh;
 
@@ -477,4 +479,30 @@ LPD3DXMESH CreateMappedSphere(LPDIRECT3DDEVICE9 pDev, float fRad, UINT slices, U
     
     // return pointer to caller
     return texMesh;
+}
+
+
+/*************************************************************************
+* Release
+* Release all allocated ressources
+*************************************************************************/
+void Release(void)
+{
+	// release shader
+	if (pEffect != NULL)
+		pEffect->Release();
+
+	// release textures
+	if (ppTextSun != NULL)
+		ppTextSun->Release();
+	if (ppTextMoon != NULL)
+		ppTextMoon->Release();
+	if (ppTextEarth != NULL)
+		ppTextEarth->Release();
+
+    // release the device and the direct3D object
+    if (pd3dDevice != NULL)
+        pd3dDevice->Release();
+    if (pD3D != NULL)
+        pD3D->Release();
 }
