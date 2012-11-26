@@ -267,6 +267,7 @@ bool initDirect3D()
     //set rendering state
     //pd3dDevice->SetRenderState(D3DRS_AMBIENT, D3DCOLOR_XRGB(255, 255, 255));
 	pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CW);
+	pd3dDevice->SetRenderState(D3DRS_WRAP0, D3DWRAPCOORD_0);
     //pd3dDevice->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
 
     //initialize camera variables
@@ -465,14 +466,16 @@ LPD3DXMESH CreateMappedSphere(LPDIRECT3DDEVICE9 pDev, float fRad, UINT slices, U
         int numVerts = texMesh->GetNumVertices();
 
         // loop through the vertices
-        for (int i = 0; i < numVerts; i++)
+        /*for (int i = 0; i < numVerts; i++)
 		{
+			// calculate normal
+			D3DXVec3Normalize(&pVerts->norm, &pVerts->pos);
             // calculate texture coordinates
-            pVerts->tu = asinf(pVerts->norm.x) / D3DX_PI + 0.5f;
-            pVerts->tv = asinf(pVerts->norm.y) / D3DX_PI + 0.5f;
+			pVerts->tu = 0.5f - (atan2(pVerts->norm.z, pVerts->norm.x)/(2 * D3DX_PI));//asinf(pVerts->norm.x) / D3DX_PI + 0.5f;
+			pVerts->tv = 0.5f - (2.0f * (asin(pVerts->norm.y)/(2 * D3DX_PI)));//asinf(pVerts->norm.y) / D3DX_PI + 0.5f;
             // go to next vertex
             pVerts++;
-        }
+        }*/
         // unlock the vertex buffer
         texMesh->UnlockVertexBuffer();
     }
