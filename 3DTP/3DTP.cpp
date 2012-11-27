@@ -34,11 +34,11 @@ typedef struct _VERTEX
 
 // Z_NEAR, Z_FAR
 float	ZNEAR	= 1.0f;
-float	ZFAR	= 500.f;
+float	ZFAR	= 1000.f;
 
 // WINDOW HEIGHT & WIDTH
-UINT	WIDTH	= 640;
-UINT	HEIGHT	= 480;
+UINT	WIDTH	= 1024;//640;
+UINT	HEIGHT	= 768;//480;
 
 // TEXTURES
 LPDIRECT3DTEXTURE9	ppTextMoon;
@@ -100,8 +100,6 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
     // Main message loop:
     MSG msg;
     ZeroMemory( &msg, sizeof(msg) );
-	
-	
 
 	pd3dDevice->CreateVertexDeclaration(dwDecl3, &ppDecl);
 
@@ -119,6 +117,11 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 	
 	hWorldViewProj = pEffect->GetParameterByName(NULL, "WorldViewProj");
 	hDiffuseMap = pEffect->GetParameterByName(NULL, "DiffuseMap");
+
+	// create the three sphere meshes
+	pSunMesh	=	CreateMappedSphere(pd3dDevice, 40, 20, 20);
+    pPlanetMesh	=	CreateMappedSphere(pd3dDevice, 20, 20, 20);
+    pMoonMesh	=	CreateMappedSphere(pd3dDevice, 10, 20, 20);
     
 	while (msg.message != WM_QUIT)
     {
@@ -296,10 +299,7 @@ void render(void)
     createCamera(ZNEAR, ZFAR);  // near clip plane, far clip plane
     pointCamera(cameraLook);
 
-    // create the three sphere meshes
-	pSunMesh	=	CreateMappedSphere(pd3dDevice, 40, 20, 20);
-    pPlanetMesh	=	CreateMappedSphere(pd3dDevice, 20, 20, 20);
-    pMoonMesh	=	CreateMappedSphere(pd3dDevice, 10, 20, 20);
+    
 
     pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
@@ -396,12 +396,12 @@ void render(void)
     pd3dDevice->EndScene();
 
     // Present the backbuffer contents to the display
-    pd3dDevice->Present( NULL, NULL, NULL, NULL );
+    pd3dDevice->Present(NULL, NULL, NULL, NULL);
 
     // Free up or release the resources allocated by CreateSphere
-    pSunMesh->Release();
+    /*pSunMesh->Release();
     pPlanetMesh->Release();
-    pMoonMesh->Release();
+    pMoonMesh->Release();*/
 	ppVertexBuffer->Release();
 	ppIndexBuffer->Release();
 }
@@ -491,6 +491,14 @@ LPD3DXMESH CreateMappedSphere(LPDIRECT3DDEVICE9 pDev, float fRad, UINT slices, U
 *************************************************************************/
 void Release(void)
 {
+	// release meshes
+	if (pSunMesh != NULL)
+		pSunMesh->Release();
+    if (pPlanetMesh != NULL)
+		pPlanetMesh->Release();
+	if (pMoonMesh != NULL)
+		pMoonMesh->Release();
+
 	// release shader
 	if (pEffect != NULL)
 		pEffect->Release();
