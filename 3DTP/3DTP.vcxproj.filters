@@ -48,5 +48,8 @@
     <None Include="earth.jpg">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="earth1.jpg">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

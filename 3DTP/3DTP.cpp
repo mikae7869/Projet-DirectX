@@ -34,11 +34,11 @@ typedef struct _VERTEX
 
 // Z_NEAR, Z_FAR
 float	ZNEAR	= 1.0f;
-float	ZFAR	= 1000.f;
+float	ZFAR	= 600.f;
 
 // WINDOW HEIGHT & WIDTH
-UINT	WIDTH	= 1024;//640;
-UINT	HEIGHT	= 768;//480;
+UINT	WIDTH	= 1024;
+UINT	HEIGHT	= 768;
 
 // TEXTURES
 LPDIRECT3DTEXTURE9	ppTextMoon;
@@ -299,8 +299,6 @@ void render(void)
     createCamera(ZNEAR, ZFAR);  // near clip plane, far clip plane
     pointCamera(cameraLook);
 
-    
-
     pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
     pd3dDevice->BeginScene();
@@ -308,14 +306,15 @@ void render(void)
 //---------------Draw Sun-------------------
    
     // set the rotation for the sun
-    D3DXMatrixRotationY(&meshRotate, D3DXToRadian(angle++));
+	D3DXMatrixRotationX(&meshRotate, D3DXToRadian(-113.5f));
+    D3DXMatrixRotationY(&meshRotate2, D3DXToRadian(angle++));
 
     //set the rotation for the moon
-    D3DXMatrixRotationY(&meshRotate2, D3DXToRadian(angle + 30));
+    //D3DXMatrixRotationY(&meshRotate2, D3DXToRadian(angle + 30));
 
-	WorldViewProj = meshRotate * matView * matProj;
+	WorldViewProj = meshRotate * meshRotate2 * matView * matProj;
 	pEffect->SetMatrix(hWorldViewProj, &WorldViewProj);
-	pEffect->SetTexture(hDiffuseMap, ppTextSun);
+	pEffect->SetTexture(hDiffuseMap, ppTextEarth);
 
 	pSunMesh->GetVertexBuffer(&ppVertexBuffer);
 	pSunMesh->GetIndexBuffer(&ppIndexBuffer);
@@ -336,10 +335,9 @@ void render(void)
 //-----------------Draw Planet--------------------
    
     //set the translation for the planet
-    D3DXMatrixTranslation(&meshTranslate, 100, 0, 0);
+    /*D3DXMatrixTranslation(&meshTranslate, 100, 0, 0);
 
     // multiply the scaling and rotation matrices to create the meshMat matrix
-    //D3DXMatrixMultiply(&meshMat, &meshTranslate, &meshRotate);
     meshMat = meshTranslate * meshRotate;
 
 	WorldViewProj = meshMat * matView * matProj;
@@ -356,16 +354,15 @@ void render(void)
 		pEffect->CommitChanges();
 		pd3dDevice->SetStreamSource(0, ppVertexBuffer, 0, sizeof(VERTEX));
 		pd3dDevice->SetIndices(ppIndexBuffer);
-		pd3dDevice->SetVertexDeclaration(ppDecl);
 		pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, pPlanetMesh->GetNumVertices(), 0, pPlanetMesh->GetNumFaces());
 		pEffect->EndPass();
 	}
-	pEffect->End();
+	pEffect->End();*/
 
 //---------------------Draw Moon----------------------
 
     //set moon at 30 from origin for first rotatation
-    D3DXMatrixTranslation(&meshTranslate, 50, 0, 0);
+    /*D3DXMatrixTranslation(&meshTranslate, 50, 0, 0);
 
     //translate moon to planet for second, faster rotation
     D3DXMatrixTranslation(&meshTranslate2, 100, 0, 0);
@@ -387,11 +384,10 @@ void render(void)
 		pEffect->CommitChanges();
 		pd3dDevice->SetStreamSource(0, ppVertexBuffer, 0, sizeof(VERTEX));
 		pd3dDevice->SetIndices(ppIndexBuffer);
-		pd3dDevice->SetVertexDeclaration(ppDecl);
 		pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, pMoonMesh->GetNumVertices(), 0, pMoonMesh->GetNumFaces());
 		pEffect->EndPass();
 	}
-	pEffect->End();
+	pEffect->End();*/
 
     pd3dDevice->EndScene();
 
@@ -399,9 +395,6 @@ void render(void)
     pd3dDevice->Present(NULL, NULL, NULL, NULL);
 
     // Free up or release the resources allocated by CreateSphere
-    /*pSunMesh->Release();
-    pPlanetMesh->Release();
-    pMoonMesh->Release();*/
 	ppVertexBuffer->Release();
 	ppIndexBuffer->Release();
 }
@@ -458,28 +451,9 @@ LPD3DXMESH CreateMappedSphere(LPDIRECT3DDEVICE9 pDev, float fRad, UINT slices, U
     // finished with the original mesh, release it
     mesh->Release();
 
-    // lock the vertex buffer
-    LPVERTEX pVerts;
-    if (SUCCEEDED(texMesh->LockVertexBuffer(0, (VOID **) &pVerts)))
-	{
-        // get vertex count
-        int numVerts = texMesh->GetNumVertices();
+	// Calculating normals for each vertex
+	D3DXComputeNormals(texMesh, NULL);
 
-        // loop through the vertices
-        /*for (int i = 0; i < numVerts; i++)
-		{
-			// calculate normal
-			D3DXVec3Normalize(&pVerts->norm, &pVerts->pos);
-            // calculate texture coordinates
-			pVerts->tu = 0.5f - (atan2(pVerts->norm.z, pVerts->norm.x)/(2 * D3DX_PI));//asinf(pVerts->norm.x) / D3DX_PI + 0.5f;
-			pVerts->tv = 0.5f - (2.0f * (asin(pVerts->norm.y)/(2 * D3DX_PI)));//asinf(pVerts->norm.y) / D3DX_PI + 0.5f;
-            // go to next vertex
-            pVerts++;
-        }*/
-        // unlock the vertex buffer
-        texMesh->UnlockVertexBuffer();
-    }
-    
     // return pointer to caller
     return texMesh;
 }

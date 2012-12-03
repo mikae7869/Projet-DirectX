@@ -36,7 +36,7 @@ VertexOutput DiffuseVS(VertexInput input)
 	float3 x = float3(1, 0, 0);
 	float3 z = float3(0, 0, 1);
 
-	float3 norm = normalize(input.Normal);
+	float3 norm = input.Normal;
 
 	// find theta using the normal and z
 	float theta = acos(dot(norm,z));
@@ -54,7 +54,6 @@ VertexOutput DiffuseVS(VertexInput input)
 	float3 coords = float3(phi / (2*p), theta / p, 0);
   
 	output.UV = coords;
-	output.Normal = norm;
 
 	return output;
 }

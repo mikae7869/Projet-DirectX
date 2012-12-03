@@ -97,6 +97,7 @@
   <ItemGroup>
     <None Include="detail.jpg" />
     <None Include="earth.jpg" />
+    <None Include="earth1.jpg" />
     <None Include="effect.fx" />
     <None Include="moon.jpg" />
     <None Include="sun.jpg" />
