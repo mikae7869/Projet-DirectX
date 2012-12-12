@@ -1,4 +1,10 @@
-shared matrix WorldViewProj;
+shared matrix	WorldViewProj;
+shared float3	LightPosition;
+shared float3	LightDiffuseColor;
+shared float3	LightAmbiantColor;
+shared float3	LightSpecularColor;
+shared float	LightDistance;
+shared float3	CameraPos;
 
 struct VertexInput
 {
@@ -12,6 +18,7 @@ struct VertexOutput
 	float4	Position	: POSITION;
 	float2	UV			: TEXCOORD0;
     float3	Normal		: NORMAL;
+	float4 psPosition	: TEXCOORD1;
 };
 
 texture2D DiffuseMap;
@@ -31,6 +38,7 @@ VertexOutput DiffuseVS(VertexInput input)
 	VertexOutput output;
 	output.Position = mul(float4(input.Position, 1.0f), WorldViewProj);
 	output.Normal = input.Normal;
+	output.psPosition = output.Position;
 
 	float  p = 3.141592f;
 	float3 x = float3(1, 0, 0);
@@ -60,7 +68,23 @@ VertexOutput DiffuseVS(VertexInput input)
 
 float4 DiffusePS(VertexOutput input) : COLOR0
 {
-	float4 color = float4(tex2D(DiffuseMapSampler,float2(input.UV.x,input.UV.y)).rgb,1);
+	float4 texel = float4(tex2D(DiffuseMapSampler, float2(input.UV.x,input.UV.y)).rgb, 1);
+
+	float4 color = float4(LightAmbiantColor, 1);
+	
+	// Get light direction for this fragment
+	float3 lightDir = normalize(input.psPosition - LightPosition);
+
+	// Note: Non-uniform scaling not supported
+	float diffuseLighting = saturate(dot(input.Normal, -lightDir));
+	if (diffuseLighting > 0.0f)
+	{
+		color += (float4(LightDiffuseColor,1) * diffuseLighting);
+		color = saturate(color);
+	}
+
+	color = color * texel;
+
 	return color;
 }
 

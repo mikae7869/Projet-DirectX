@@ -51,6 +51,12 @@ LPD3DXEFFECT	pEffect;
 // HANDLES
 D3DXHANDLE	hWorldViewProj;
 D3DXHANDLE	hDiffuseMap;
+D3DXHANDLE	hLightPosition;
+D3DXHANDLE	hLightAmbiantColor;
+D3DXHANDLE	hLightDiffuseColor;
+D3DXHANDLE	hLightSpecularColor;
+D3DXHANDLE	hLightDistance;
+D3DXHANDLE	hCameraPos;
 
 // VERTEX DECLARATION
 D3DVERTEXELEMENT9 dwDecl3[] =
@@ -70,7 +76,7 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 LPD3DXMESH CreateMappedSphere(LPDIRECT3DDEVICE9, float, UINT, UINT);
 
 // DirectX functions
-bool initDirect3D();   
+bool initDirect3D();
 void render(void);
 void Release(void);
 
@@ -117,6 +123,18 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 	
 	hWorldViewProj = pEffect->GetParameterByName(NULL, "WorldViewProj");
 	hDiffuseMap = pEffect->GetParameterByName(NULL, "DiffuseMap");
+	hCameraPos = pEffect->GetParameterByName(NULL, "CameraPos");
+	hLightPosition = pEffect->GetParameterByName(NULL, "LightPosition");
+	hLightAmbiantColor = pEffect->GetParameterByName(NULL, "LightAmbiantColor");
+	hLightDiffuseColor = pEffect->GetParameterByName(NULL, "LightDiffuseColor");
+	hLightSpecularColor = pEffect->GetParameterByName(NULL, "LightSpecularColor");
+	hLightDistance = pEffect->GetParameterByName(NULL, "LightDistance");
+	
+	pEffect->SetVector(hLightSpecularColor, &D3DXVECTOR4(1.0f, 1.0f, 1.0f, 1.0f)); // Set specular light color
+	pEffect->SetVector(hLightAmbiantColor, &D3DXVECTOR4(0.15f, 0.15f, 0.15f, 1.0f)); // Set ambiant light color
+	pEffect->SetVector(hLightDiffuseColor, &D3DXVECTOR4(1.0f, 1.0f, 1.0f, 1.0f)); // Set diffuse light color
+	pEffect->SetVector(hLightPosition, &D3DXVECTOR4(0.0f, 0.0f, 100.0f, 1.0f)); // Set light position
+	pEffect->SetFloat(hLightDistance, 600.0f); // Set light propagation distance
 
 	// create the three sphere meshes
 	pSunMesh	=	CreateMappedSphere(pd3dDevice, 40, 20, 20);
@@ -200,38 +218,38 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             {
                 // MOVE UP
                 case VK_NUMPAD9:
-                    cameraPosition.y += 1.0f;
-                    cameraLook.y += 1.0f;
+                    cameraPosition.y += 10.0f;
+                    cameraLook.y += 10.0f;
                     break;
 
                 // MOVE DOWN
                 case VK_NUMPAD3:
-                    cameraPosition.y -= 1.0f;
-                    cameraLook.y -= 1.0f;
+                    cameraPosition.y -= 10.0f;
+                    cameraLook.y -= 10.0f;
                     break;
 
                 // MOVE LEFT
                 case VK_NUMPAD4:
-                    cameraPosition.x -= 1.0f;
-                    cameraLook.x -= 1.0f;
+                    cameraPosition.x -= 10.0f;
+                    cameraLook.x -= 10.0f;
                     break;
 
                 // MOVE RIGHT
                 case VK_NUMPAD6:
-                    cameraPosition.x += 1.0f;
-                    cameraLook.x += 1.0f;
+                    cameraPosition.x += 10.0f;
+                    cameraLook.x += 10.0f;
                     break;
 
 				//ZOOM IN
                 case VK_NUMPAD8:
-                    cameraPosition.z += 1.0f;
-                    cameraLook.z += 1.0f;
+                    cameraPosition.z += 10.0f;
+                    cameraLook.z += 10.0f;
                     break;
    
 				//ZOOM OUT
                 case VK_NUMPAD2:
-                    cameraPosition.z -= 1.0f;
-                    cameraLook.z -= 1.0f;
+                    cameraPosition.z -= 10.0f;
+                    cameraLook.z -= 10.0f;
                     break;
             }
         break;
@@ -274,7 +292,7 @@ bool initDirect3D()
     //pd3dDevice->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
 
     //initialize camera variables
-    moveCamera(D3DXVECTOR3(0.0f, 0.0f, -400.0f));
+    moveCamera(D3DXVECTOR3(0.0f, 0.0f, 350.0f));
     pointCamera(D3DXVECTOR3(0.0f, 0.0f, 0.0f));
    
     return true;
@@ -306,7 +324,7 @@ void render(void)
 //---------------Draw Sun-------------------
    
     // set the rotation for the sun
-	D3DXMatrixRotationX(&meshRotate, D3DXToRadian(-113.5f));
+	D3DXMatrixRotationX(&meshRotate, D3DXToRadian(-90.0f));
     D3DXMatrixRotationY(&meshRotate2, D3DXToRadian(angle++));
 
     //set the rotation for the moon
@@ -315,6 +333,7 @@ void render(void)
 	WorldViewProj = meshRotate * meshRotate2 * matView * matProj;
 	pEffect->SetMatrix(hWorldViewProj, &WorldViewProj);
 	pEffect->SetTexture(hDiffuseMap, ppTextEarth);
+	pEffect->SetVector(hCameraPos , &D3DXVECTOR4(cameraPosition, 1.0f));
 
 	pSunMesh->GetVertexBuffer(&ppVertexBuffer);
 	pSunMesh->GetIndexBuffer(&ppIndexBuffer);
