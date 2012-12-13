@@ -21,6 +21,12 @@ struct VertexOutput
 	float4 psPosition	: TEXCOORD1;
 };
 
+struct ScreenVertex
+{
+	float4	Position	: POSITION;
+	float2	UV			: TEXCOORD0;
+};
+
 texture2D DiffuseMap;
 
 sampler2D DiffuseMapSampler = sampler_state
@@ -88,11 +94,31 @@ float4 DiffusePS(VertexOutput input) : COLOR0
 	return color;
 }
 
+ScreenVertex FinalVS(ScreenVertex input)
+{
+	return input;
+}
+
+float4 FinalPS(ScreenVertex input) : COLOR0
+{
+	return float4(tex2D(DiffuseMapSampler, float2(input.UV.x,input.UV.y)).rgb, 1);
+	//return float4(1, 0, 0, 1);
+}
+
 technique diffuse
 {
-  pass p0
-  {
-    VertexShader = compile vs_3_0 DiffuseVS();
-    PixelShader  = compile ps_3_0 DiffusePS();
-  }
+	pass p0
+	{
+		VertexShader = compile vs_3_0 DiffuseVS();
+		PixelShader  = compile ps_3_0 DiffusePS();
+	}
+}
+
+technique final
+{
+	pass p0
+	{
+		VertexShader = compile vs_3_0 FinalVS();
+		PixelShader  = compile ps_3_0 FinalPS();
+	}
 }
