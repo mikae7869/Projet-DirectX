@@ -66,6 +66,7 @@ LPD3DXEFFECT	pEffect;
 // HANDLES
 D3DXHANDLE	hWorldViewProj;
 D3DXHANDLE	hDiffuseMap;
+D3DXHANDLE  hBloomBlurMap;
 D3DXHANDLE	hLightPosition;
 D3DXHANDLE	hLightAmbiantColor;
 D3DXHANDLE	hLightDiffuseColor;
@@ -102,6 +103,7 @@ void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottom
 void  RenderFinal ();
 void RenderScene ();
 void RenderBloom ();
+void RenderBlur ();
 
 // DirectX functions
 bool initDirect3D();
@@ -148,8 +150,8 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 
 	// Get Surface Texture
 	ppRenderTexture->GetSurfaceLevel(0, &ppRenderSurface);
-	ppRenderTexture->GetSurfaceLevel(0, &ppBloomSurface);
-	ppRenderTexture->GetSurfaceLevel(0, &ppBlurSurface);
+	ppBloomTexture->GetSurfaceLevel(0, &ppBloomSurface);
+	ppBlurTexture->GetSurfaceLevel(0, &ppBlurSurface);
 
 	D3DXCreateTextureFromFile(pd3dDevice, L"./earth.jpg", &ppTextEarth);
 
@@ -164,6 +166,7 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 	
 	hWorldViewProj = pEffect->GetParameterByName(NULL, "WorldViewProj");
 	hDiffuseMap = pEffect->GetParameterByName(NULL, "DiffuseMap");
+	hBloomBlurMap = pEffect->GetParameterByName(NULL, "BloomBlurMap");
 	hCameraPos = pEffect->GetParameterByName(NULL, "CameraPos");
 	hLightPosition = pEffect->GetParameterByName(NULL, "LightPosition");
 	hLightAmbiantColor = pEffect->GetParameterByName(NULL, "LightAmbiantColor");
@@ -362,6 +365,8 @@ void render(void)
 
 	RenderBloom();
 
+	RenderBlur ();
+
 	RenderFinal ();
 
 
@@ -540,7 +545,7 @@ void RenderScene ()
 
 void RenderBloom ()
 {
-	/*D3DXMATRIX WorldViewProj, meshMat;
+	D3DXMATRIX WorldViewProj, meshMat;
 	unsigned int cPasses, iPass;
 
 
@@ -562,10 +567,40 @@ void RenderBloom ()
 		pEffect->EndPass();
 	}
 	pEffect->End();
-	pd3dDevice->EndScene();*/
+	pd3dDevice->EndScene();
 
 
 }
+
+
+void RenderBlur ()
+{
+
+	D3DXMATRIX WorldViewProj, meshMat;
+	unsigned int cPasses, iPass;
+
+
+	pd3dDevice->SetRenderTarget(0, ppBlurSurface);
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+
+	pd3dDevice->BeginScene();
+	
+	pEffect->SetTechnique("blur");
+	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
+	pEffect->SetTexture(hDiffuseMap, ppBloomTexture);
+	pEffect->Begin(&cPasses, 0);
+	for (iPass = 0; iPass < cPasses; ++iPass)
+	{
+		pEffect->BeginPass(iPass);
+		pEffect->CommitChanges();
+		pd3dDevice->SetVertexDeclaration(ppScreenDecl);
+		DrawFullScreenQuad(0.0f, 0.0f, 1.0f, 1.0f);
+		pEffect->EndPass();
+	}
+	pEffect->End();
+	pd3dDevice->EndScene();
+}
+
 void  RenderFinal ()
 {
 
@@ -580,6 +615,7 @@ void  RenderFinal ()
 	pEffect->SetTechnique("final");
 	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
 	pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
+	pEffect->SetTexture(hBloomBlurMap, ppBlurTexture);
 	pEffect->Begin(&cPasses, 0);
 	for (iPass = 0; iPass < cPasses; ++iPass)
 	{
@@ -612,16 +648,16 @@ void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottom
     SCREENVERTEX svQuad[4];
 
 	svQuad[0].p = D3DXVECTOR4( -1.0f, -1.0f, 0.5f, 1.0f );
-    svQuad[0].t = D3DXVECTOR2( 1, 1 );
+    svQuad[0].t = D3DXVECTOR2( 0, 1 );
 
 	svQuad[1].p = D3DXVECTOR4( -1.0f, 1.0f, 0.5f, 1.0f );
-    svQuad[1].t = D3DXVECTOR2( 1, 0 );
+    svQuad[1].t = D3DXVECTOR2( 0, 0 );
 
 	svQuad[2].p = D3DXVECTOR4( 1.0f, -1.0f, 0.5f, 1.0f );
-    svQuad[2].t = D3DXVECTOR2( 0, 1 );
+    svQuad[2].t = D3DXVECTOR2( 1, 1 );
 
 	svQuad[3].p = D3DXVECTOR4( 1.0f, 1.0f, 0.5f, 1.0f );
-    svQuad[3].t = D3DXVECTOR2( 0, 0 );
+    svQuad[3].t = D3DXVECTOR2( 1, 0 );
 
     //pd3dDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
 	
