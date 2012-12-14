@@ -6,6 +6,9 @@ shared float3	LightSpecularColor;
 shared float	LightDistance;
 shared float3	CameraPos;
 
+float2	g_vSourceDimensions;
+float2	g_vDestinationDimensions;
+
 struct VertexInput
 {
 	float3	Position	: POSITION;
@@ -40,6 +43,8 @@ struct ScreenBlur {
 	float2 UV : TEXCOORD7;
 	float2 Direction : TEXCOORD8;
 };
+
+
 
 //float tapWeight[7] = { 0.5f, 0.4f, 0.3f, 0.2f, 0.1f, 0.05f, 0.02f };
 //float tapOffset[6] = { 0.003f, 0.006f, 0.009f, 0.012f, 0.016f, 0.022f};
@@ -115,6 +120,17 @@ sampler2D BloomMapSamplerScreen = sampler_state
 	MipFilter	= LINEAR;
 	AddressU	= Clamp;
 	AddressV	= Clamp;
+};
+
+sampler2D PointSampler0 = sampler_state
+{
+    Texture = <DiffuseMap>;
+    MinFilter = point;
+    MagFilter = point;
+    MipFilter = point;
+    MaxAnisotropy = 1;
+    AddressU = CLAMP;
+    AddressV = CLAMP;
 };
 
 VertexOutput DiffuseVS(VertexInput input) 
@@ -276,16 +292,16 @@ float4 BlurPS(ScreenBlur input) : COLOR0
 	for (int i = 0; i < 9; i++)
 	{
 		float2 tap = input.UV + tapOffset[i] * _scale * float2 (0,1);
-		color += tex2D(DiffuseMapSamplerScreen, tap).r * tapWeight[i+1];
+		color += tex2D(DiffuseMapSamplerScreen, tap) * tapWeight[i+1];
 		float2 tapneg = input.UV - tapOffset[i] * _scale * float2 (0,1);
-		color += tex2D(DiffuseMapSamplerScreen, tapneg).r * tapWeight[i+1];
+		color += tex2D(DiffuseMapSamplerScreen, tapneg) * tapWeight[i+1];
     }
 	for (int i = 0; i < 9; i++)
 	{
 		float2 tap = input.UV + tapOffset[i] * _scale * float2 (1,0);
-		color += tex2D(DiffuseMapSamplerScreen, tap).r * tapWeight[i+1];
+		color += tex2D(DiffuseMapSamplerScreen, tap) * tapWeight[i+1];
 		float2 tapneg = input.UV - tapOffset[i] * _scale * float2 (1,0);
-		color += tex2D(DiffuseMapSamplerScreen, tapneg).r * tapWeight[i+1];
+		color += tex2D(DiffuseMapSamplerScreen, tapneg) * tapWeight[i+1];
     }
 
 
@@ -306,6 +322,44 @@ float4 BlurPS(ScreenBlur input) : COLOR0
 }
 
 
+
+float g_fSigma = 0.5f;
+
+
+
+ScreenVertex PostProcessVS(ScreenVertex input)
+{
+	return input;
+}
+
+float CalcGaussianWeight(int iSamplePoint)
+{
+	float g = 1.0f / sqrt(2.0f * 3.14159 * g_fSigma * g_fSigma);  
+	return (g * exp(-(iSamplePoint * iSamplePoint) / (2 * g_fSigma * g_fSigma)));
+}
+
+float4 GaussianBlurH (in float2 in_vTexCoord : TEXCOORD0,
+						uniform int iRadius,
+						uniform int bEncodeLogLuv)	: COLOR0
+{
+    float4 vColor = 0;
+	float2 vTexCoord = in_vTexCoord;
+
+    for (int i = -iRadius; i < iRadius; i++)
+    {   
+		float fWeight = CalcGaussianWeight(i);
+		vTexCoord.x = in_vTexCoord.x + (i / g_vSourceDimensions.x);
+		float4 vSample = tex2D(PointSampler0, vTexCoord);
+		/*if (bEncodeLogLuv)
+			vSample = float4(LogLuvDecode(vSample), 1.0f);*/
+		vColor += vSample * fWeight;
+    }
+
+	/*if (bEncodeLogLuv)
+		vColor = LogLuvEncode(vColor.rgb);*/
+	
+	return vColor;
+}
 
 
 
@@ -357,4 +411,13 @@ technique blur
 		VertexShader = compile vs_3_0 BlurVS(float2(1,0));
 		PixelShader  = compile ps_3_0 BlurPS();
 	}
+}
+
+technique GaussianBlur
+{
+    pass p0
+    {
+        VertexShader = compile vs_3_0 PostProcessVS();
+        PixelShader = compile ps_3_0 GaussianBlurH(6, false);
+    }
 }

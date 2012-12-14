@@ -23,6 +23,8 @@ D3DXVECTOR3		cameraLook;			// where the camera is pointing
 //Buffer
 LPDIRECT3DVERTEXBUFFER9 ppVertexBuffer;
 LPDIRECT3DINDEXBUFFER9 ppIndexBuffer;
+LPDIRECT3DVERTEXBUFFER9	ppScreenVertexBuffer;
+LPDIRECT3DINDEXBUFFER9 ppScreenIndexBuffer;
 
 // VERTEX STRUCTURE
 typedef struct _VERTEX
@@ -74,6 +76,9 @@ D3DXHANDLE	hLightSpecularColor;
 D3DXHANDLE	hLightDistance;
 D3DXHANDLE	hCameraPos;
 
+D3DXHANDLE  hSourceDimensions;
+D3DXHANDLE  hDestDimensions;
+
 // VERTEX DECLARATION
 D3DVERTEXELEMENT9 dwDecl3[] =
 {
@@ -104,6 +109,8 @@ void  RenderFinal ();
 void RenderScene ();
 void RenderBloom ();
 void RenderBlur ();
+void RenderGaussianBlur ();
+void createScreenQuad ();
 
 // DirectX functions
 bool initDirect3D();
@@ -144,9 +151,9 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 	pd3dDevice->GetRenderTarget(0, &ppBackBuffer);
 
 	// Create Render Texture
-	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R5G6B5, D3DPOOL_DEFAULT, &ppRenderTexture, NULL);
-	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R5G6B5, D3DPOOL_DEFAULT, &ppBloomTexture, NULL);
-	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R5G6B5, D3DPOOL_DEFAULT, &ppBlurTexture, NULL);
+	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &ppRenderTexture, NULL);
+	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &ppBloomTexture, NULL);
+	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &ppBlurTexture, NULL);
 
 	// Get Surface Texture
 	ppRenderTexture->GetSurfaceLevel(0, &ppRenderSurface);
@@ -173,6 +180,9 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 	hLightDiffuseColor = pEffect->GetParameterByName(NULL, "LightDiffuseColor");
 	hLightSpecularColor = pEffect->GetParameterByName(NULL, "LightSpecularColor");
 	hLightDistance = pEffect->GetParameterByName(NULL, "LightDistance");
+
+	hSourceDimensions = pEffect->GetParameterByName(NULL, "g_vSourceDimensions");
+	hDestDimensions = pEffect->GetParameterByName(NULL, "g_vDestinationDimensions");
 	
 	pEffect->SetVector(hLightSpecularColor, &D3DXVECTOR4(1.0f, 1.0f, 1.0f, 1.0f)); // Set specular light color
 	pEffect->SetVector(hLightAmbiantColor, &D3DXVECTOR4(0.15f, 0.15f, 0.15f, 1.0f)); // Set ambiant light color
@@ -184,6 +194,8 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 	pSunMesh	=	CreateMappedSphere(pd3dDevice, 10, 20, 20);
     pPlanetMesh	=	CreateMappedSphere(pd3dDevice, 20, 20, 20);
     pMoonMesh	=	CreateMappedSphere(pd3dDevice, 10, 20, 20);
+
+	createScreenQuad();
     
 	while (msg.message != WM_QUIT)
     {
@@ -331,7 +343,7 @@ bool initDirect3D()
 
     //set rendering state
     //pd3dDevice->SetRenderState(D3DRS_AMBIENT, D3DCOLOR_XRGB(255, 255, 255));
-	//pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CW);
+	pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
 	pd3dDevice->SetRenderState(D3DRS_WRAP0, D3DWRAPCOORD_0);
     //pd3dDevice->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
 
@@ -366,6 +378,8 @@ void render(void)
 	RenderBloom();
 
 	RenderBlur ();
+
+	//RenderGaussianBlur ();
 
 	RenderFinal ();
 
@@ -573,10 +587,41 @@ void RenderBloom ()
 
 }
 
+void RenderGaussianBlur ()
+{
+	D3DXMATRIX WorldViewProj, meshMat;
+	unsigned int cPasses, iPass;
+
+
+	pd3dDevice->SetRenderTarget(0, ppBlurSurface);
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+
+	pd3dDevice->BeginScene();
+	
+	pEffect->SetTechnique("GaussianBlur");
+		D3DXVECTOR2 SourceSize[2];
+	D3DSURFACE_DESC desc;
+	ppBloomTexture->GetLevelDesc(0, &desc); // Level 0 is top most.
+	SourceSize->x = desc.Width;
+	SourceSize->y = desc.Height;
+	pEffect->SetValue(hSourceDimensions, SourceSize, sizeof (SourceSize));
+	pEffect->SetTexture(hDiffuseMap, ppBloomTexture);
+	pEffect->Begin(&cPasses, 0);
+	for (iPass = 0; iPass < cPasses; ++iPass)
+	{
+		pEffect->BeginPass(iPass);
+		pEffect->CommitChanges();
+		pd3dDevice->SetVertexDeclaration(ppScreenDecl);
+		DrawFullScreenQuad(0.0f, 0.0f, 1.0f, 1.0f);
+		pEffect->EndPass();
+	}
+	pEffect->End();
+	pd3dDevice->EndScene();
+}
+
 
 void RenderBlur ()
 {
-
 	D3DXMATRIX WorldViewProj, meshMat;
 	unsigned int cPasses, iPass;
 
@@ -589,6 +634,7 @@ void RenderBlur ()
 	pEffect->SetTechnique("blur");
 	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
 	pEffect->SetTexture(hDiffuseMap, ppBloomTexture);
+
 	pEffect->Begin(&cPasses, 0);
 	for (iPass = 0; iPass < cPasses; ++iPass)
 	{
@@ -630,9 +676,45 @@ void  RenderFinal ()
 	pd3dDevice->EndScene();
 }
 
+void createScreenQuad ()
+{
+	   // Draw the quad
+    SCREENVERTEX svQuad[4];
+
+	svQuad[0].p = D3DXVECTOR4( -1.0f, -1.0f, 0.0f, 1.0f );
+    svQuad[0].t = D3DXVECTOR2( 0, 1 );
+
+	svQuad[1].p = D3DXVECTOR4( -1.0f, 1.0f, 0.0f, 1.0f );
+    svQuad[1].t = D3DXVECTOR2( 0, 0 );
+
+	svQuad[2].p = D3DXVECTOR4( 1.0f, -1.0f, 0.0f, 1.0f );
+    svQuad[2].t = D3DXVECTOR2( 1, 1 );
+
+	svQuad[3].p = D3DXVECTOR4( 1.0f, 1.0f, 0.0f, 1.0f );
+    svQuad[3].t = D3DXVECTOR2( 1, 0 );
+
+
+
+	VOID*	pVoid;
+
+	pd3dDevice->CreateVertexBuffer(sizeof(svQuad), 0, 0, D3DPOOL_MANAGED, &ppScreenVertexBuffer, NULL);
+	ppScreenVertexBuffer->Lock(0, sizeof(svQuad), (void**)&pVoid, 0);    // lock the vertex buffer
+	memcpy(pVoid, svQuad, sizeof(svQuad));    // copy the vertices to the locked buffer
+	ppScreenVertexBuffer->Unlock();    // unlock the vertex buffer
+	short indices[] =
+	{
+		1,3,0, 2
+	};
+	pd3dDevice->CreateIndexBuffer(sizeof(indices), D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_MANAGED, &ppScreenIndexBuffer, NULL);
+	ppScreenIndexBuffer->Lock(0, sizeof(indices), (void**)&pVoid, 0);
+	memcpy(pVoid, indices, sizeof(indices));
+	ppScreenIndexBuffer->Unlock();
+
+}
+
 void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottomV )
 {
-    D3DSURFACE_DESC dtdsdRT;
+  /*  D3DSURFACE_DESC dtdsdRT;
     PDIRECT3DSURFACE9 pSurfRT;
 
     // Acquire render target width and height
@@ -648,16 +730,16 @@ void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottom
     // Draw the quad
     SCREENVERTEX svQuad[4];
 
-	svQuad[0].p = D3DXVECTOR4( -1.0f, -1.0f, 0.5f, 1.0f );
+	svQuad[0].p = D3DXVECTOR4( -1.0f, -1.0f, 0.0f, 1.0f );
     svQuad[0].t = D3DXVECTOR2( 0, 1 );
 
-	svQuad[1].p = D3DXVECTOR4( -1.0f, 1.0f, 0.5f, 1.0f );
+	svQuad[1].p = D3DXVECTOR4( -1.0f, 1.0f, 0.0f, 1.0f );
     svQuad[1].t = D3DXVECTOR2( 0, 0 );
 
-	svQuad[2].p = D3DXVECTOR4( 1.0f, -1.0f, 0.5f, 1.0f );
+	svQuad[2].p = D3DXVECTOR4( 1.0f, -1.0f, 0.0f, 1.0f );
     svQuad[2].t = D3DXVECTOR2( 1, 1 );
 
-	svQuad[3].p = D3DXVECTOR4( 1.0f, 1.0f, 0.5f, 1.0f );
+	svQuad[3].p = D3DXVECTOR4( 1.0f, 1.0f, 0.0f, 1.0f );
     svQuad[3].t = D3DXVECTOR2( 1, 0 );
 
     //pd3dDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
@@ -672,18 +754,18 @@ void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottom
 	ppScreenVertexBuffer->Unlock();    // unlock the vertex buffer
 	short indices[] =
 	{
-		0,1,3, 3,2,0
+		1,3,0, 2
 	};
-	pd3dDevice->CreateIndexBuffer(sizeof(indices), D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_MANAGED, &ppIndexBuffer, NULL);
-	ppIndexBuffer->Lock(0, sizeof(indices), (void**)&pVoid, 0);
+	pd3dDevice->CreateIndexBuffer(sizeof(indices), D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_MANAGED, &ppScreenIndexBuffer, NULL);
+	ppScreenIndexBuffer->Lock(0, sizeof(indices), (void**)&pVoid, 0);
 	memcpy(pVoid, indices, sizeof(indices));
-	ppIndexBuffer->Unlock();
+	ppScreenIndexBuffer->Unlock();*/
 
 	pd3dDevice->SetStreamSource(0, ppScreenVertexBuffer, 0, sizeof(SCREENVERTEX));
-	pd3dDevice->SetIndices(ppIndexBuffer);
-	pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2);
-	ppScreenVertexBuffer->Release();
-	ppIndexBuffer->Release();
+	pd3dDevice->SetIndices(ppScreenIndexBuffer);
+	pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLESTRIP, 0, 0, 4, 0, 2);
+	//ppScreenVertexBuffer->Release();
+	//ppIndexBuffer->Release();
     //pd3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, svQuad, sizeof(SCREENVERTEX));
     //pd3dDevice->SetRenderState(D3DRS_ZENABLE, TRUE);
 }
