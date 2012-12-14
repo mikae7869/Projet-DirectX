@@ -116,6 +116,38 @@ float4 FinalPS(ScreenVertex input) : COLOR0
 	//return float4(1, 0, 0, 1);
 }
 
+ScreenVertex BloomVS(ScreenVertex input)
+{
+
+	return input;
+}
+
+float4 BloomPS(ScreenVertex input) : COLOR0
+{
+	float4 color = float4(tex2D(DiffuseMapSamplerScreen, float2(input.UV.x,input.UV.y)).rgb, 1);
+	return color;
+	//return float4(1, 0, 0, 1);
+}
+
+
+VertexOutput SimpleSunVS(VertexInput input) 
+{
+	VertexOutput output;
+	output.Position = mul(float4(input.Position, 1.0f), WorldViewProj);
+	output.Normal = input.Normal;
+	output.psPosition = output.Position;
+	output.UV = input.UV;
+
+	return output;
+}
+
+float4 SimpleSunPS(VertexOutput input) : COLOR0
+{
+	return float4 (1,1,1,1);
+}
+
+
+
 technique diffuse
 {
 	pass p0
@@ -131,5 +163,23 @@ technique final
 	{
 		VertexShader = compile vs_3_0 FinalVS();
 		PixelShader  = compile ps_3_0 FinalPS();
+	}
+}
+
+technique rendersun
+{
+	pass p0
+	{
+		VertexShader = compile vs_3_0 SimpleSunVS();
+		PixelShader  = compile ps_3_0 SimpleSunPS();
+	}
+}
+
+technique bloom
+{
+	pass p0
+	{
+		VertexShader = compile vs_3_0 BloomVS();
+		PixelShader  = compile ps_3_0 BloomPS();
 	}
 }

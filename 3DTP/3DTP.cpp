@@ -20,6 +20,10 @@ D3DXMATRIX		matProj;			// the projection matrix
 D3DXVECTOR3		cameraPosition;		// the position of the camera
 D3DXVECTOR3		cameraLook;			// where the camera is pointing
 
+//Buffer
+LPDIRECT3DVERTEXBUFFER9 ppVertexBuffer;
+LPDIRECT3DINDEXBUFFER9 ppIndexBuffer;
+
 // VERTEX STRUCTURE
 typedef struct _VERTEX
 {
@@ -47,10 +51,14 @@ UINT	HEIGHT	= 768;
 // TEXTURES
 LPDIRECT3DTEXTURE9	ppTextEarth;
 LPDIRECT3DTEXTURE9	ppRenderTexture = NULL;
+LPDIRECT3DTEXTURE9	ppBloomTexture = NULL;
+LPDIRECT3DTEXTURE9	ppBlurTexture = NULL;
 
 // SURFACES
 LPDIRECT3DSURFACE9	ppRenderSurface = NULL;
 LPDIRECT3DSURFACE9	ppBackBuffer = NULL;
+LPDIRECT3DSURFACE9	ppBloomSurface = NULL;
+LPDIRECT3DSURFACE9	ppBlurSurface = NULL;
 
 // SHADER
 LPD3DXEFFECT	pEffect;
@@ -91,6 +99,9 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 LPD3DXMESH CreateMappedSphere(LPDIRECT3DDEVICE9, float, UINT, UINT);
 
 void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottomV );
+void  RenderFinal ();
+void RenderScene ();
+void RenderBloom ();
 
 // DirectX functions
 bool initDirect3D();
@@ -132,9 +143,13 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 
 	// Create Render Texture
 	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R5G6B5, D3DPOOL_DEFAULT, &ppRenderTexture, NULL);
+	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R5G6B5, D3DPOOL_DEFAULT, &ppBloomTexture, NULL);
+	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_R5G6B5, D3DPOOL_DEFAULT, &ppBlurTexture, NULL);
 
 	// Get Surface Texture
 	ppRenderTexture->GetSurfaceLevel(0, &ppRenderSurface);
+	ppRenderTexture->GetSurfaceLevel(0, &ppBloomSurface);
+	ppRenderTexture->GetSurfaceLevel(0, &ppBlurSurface);
 
 	D3DXCreateTextureFromFile(pd3dDevice, L"./earth.jpg", &ppTextEarth);
 
@@ -159,11 +174,11 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 	pEffect->SetVector(hLightSpecularColor, &D3DXVECTOR4(1.0f, 1.0f, 1.0f, 1.0f)); // Set specular light color
 	pEffect->SetVector(hLightAmbiantColor, &D3DXVECTOR4(0.15f, 0.15f, 0.15f, 1.0f)); // Set ambiant light color
 	pEffect->SetVector(hLightDiffuseColor, &D3DXVECTOR4(1.0f, 1.0f, 1.0f, 1.0f)); // Set diffuse light color
-	pEffect->SetVector(hLightPosition, &D3DXVECTOR4(0.0f, 0.0f, 100.0f, 1.0f)); // Set light position
+	pEffect->SetVector(hLightPosition, &D3DXVECTOR4(-100.0f, 50.0f, 0.0f, 1.0f)); // Set light position
 	pEffect->SetFloat(hLightDistance, 600.0f); // Set light propagation distance
 
 	// create the three sphere meshes
-	pSunMesh	=	CreateMappedSphere(pd3dDevice, 40, 20, 20);
+	pSunMesh	=	CreateMappedSphere(pd3dDevice, 10, 20, 20);
     pPlanetMesh	=	CreateMappedSphere(pd3dDevice, 20, 20, 20);
     pMoonMesh	=	CreateMappedSphere(pd3dDevice, 10, 20, 20);
     
@@ -318,8 +333,8 @@ bool initDirect3D()
     //pd3dDevice->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
 
     //initialize camera variables
-    moveCamera(D3DXVECTOR3(0.0f, 0.0f, -100.0f));
-    pointCamera(D3DXVECTOR3(0.0f, 0.0f, 0.0f));
+    moveCamera(D3DXVECTOR3(-50.0f, 0.0f, -200.0f));
+    pointCamera(D3DXVECTOR3(-50.0f, 0.0f, 0.0f));
    
     return true;
 }
@@ -334,76 +349,23 @@ void render(void)
         return;
 
     // make the angle variable so we can change it each frame
-    static int angle = 0;
-    D3DXMATRIX WorldViewProj, meshMat, meshRotate, meshRotate2, meshTranslate, meshTranslate2;
-	unsigned int cPasses, iPass;
-	LPDIRECT3DVERTEXBUFFER9 ppVertexBuffer;
-	LPDIRECT3DINDEXBUFFER9 ppIndexBuffer;
+    //static int angle = 0;
+
+
 
     createCamera(ZNEAR, ZFAR);  // near clip plane, far clip plane
     pointCamera(cameraLook);
 
-	// Set Render Target the Render Scene
-	pd3dDevice->SetRenderTarget(0, ppRenderSurface);
-
-    pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
-
-    pd3dDevice->BeginScene();
-
-//---------------Draw Earth-------------------
-   
-    // set the rotation for the sun
-//	D3DXMatrixRotationX(&meshRotate, D3DXToRadian(-90.0f));
-    D3DXMatrixRotationY(&meshRotate2, D3DXToRadian(angle++));
-
-    //set the rotation for the moon
-    //D3DXMatrixRotationY(&meshRotate2, D3DXToRadian(angle + 30));
-
-	//WorldViewProj = meshRotate * meshRotate2 * matView * matProj;
-	WorldViewProj =  meshRotate2 * matView * matProj;
-
-	pEffect->SetMatrix(hWorldViewProj, &WorldViewProj);
-	pEffect->SetTexture(hDiffuseMap, ppTextEarth);
-	pEffect->SetVector(hCameraPos , &D3DXVECTOR4(cameraPosition, 1.0f));
-
-	pSunMesh->GetVertexBuffer(&ppVertexBuffer);
-	pSunMesh->GetIndexBuffer(&ppIndexBuffer);
-
-	pEffect->SetTechnique("diffuse");
-	pEffect->Begin(&cPasses, 0);
-	for (iPass = 0; iPass < cPasses; ++iPass)
-	{
-		pEffect->BeginPass(iPass);
-		pEffect->CommitChanges();
-		pd3dDevice->SetStreamSource(0, ppVertexBuffer, 0, sizeof(VERTEX));
-		pd3dDevice->SetIndices(ppIndexBuffer);
-		pd3dDevice->SetVertexDeclaration(ppDecl);
-		pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, pSunMesh->GetNumVertices(), 0, pSunMesh->GetNumFaces());
-		pEffect->EndPass();
-	}
-	pEffect->End();
-
-    pd3dDevice->EndScene();
-
-	pd3dDevice->SetRenderTarget(0, ppBackBuffer);
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
-
-	pd3dDevice->BeginScene();
 	
-	pEffect->SetTechnique("final");
-	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
-	pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
-	pEffect->Begin(&cPasses, 0);
-	for (iPass = 0; iPass < cPasses; ++iPass)
-	{
-		pEffect->BeginPass(iPass);
-		pEffect->CommitChanges();
-		pd3dDevice->SetVertexDeclaration(ppScreenDecl);
-		DrawFullScreenQuad(0.0f, 0.0f, 1.0f, 1.0f);
-		pEffect->EndPass();
-	}
-	pEffect->End();
-	pd3dDevice->EndScene();
+
+	RenderScene ();
+
+	RenderBloom();
+
+	RenderFinal ();
+
+
+	
 
     // Present the backbuffer contents to the display
     pd3dDevice->Present(NULL, NULL, NULL, NULL);
@@ -502,6 +464,135 @@ void Release(void)
         pD3D->Release();
 }
 
+
+
+void RenderScene ()
+{
+	    D3DXMATRIX WorldViewProj, meshTranslate;
+	unsigned int cPasses, iPass;
+
+	// Set Render Target the Render Scene
+	pd3dDevice->SetRenderTarget(0, ppRenderSurface);
+
+    pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+
+    pd3dDevice->BeginScene();
+
+//---------------Draw Earth-------------------
+   
+	WorldViewProj =  matView * matProj;
+
+	pEffect->SetMatrix(hWorldViewProj, &WorldViewProj);
+	pEffect->SetTexture(hDiffuseMap, ppTextEarth);
+	pEffect->SetVector(hCameraPos , &D3DXVECTOR4(cameraPosition, 1.0f));
+
+	pPlanetMesh->GetVertexBuffer(&ppVertexBuffer);
+	pPlanetMesh->GetIndexBuffer(&ppIndexBuffer);
+
+	pEffect->SetTechnique("diffuse");
+	pEffect->Begin(&cPasses, 0);
+	for (iPass = 0; iPass < cPasses; ++iPass)
+	{
+		pEffect->BeginPass(iPass);
+		pEffect->CommitChanges();
+		pd3dDevice->SetStreamSource(0, ppVertexBuffer, 0, sizeof(VERTEX));
+		pd3dDevice->SetIndices(ppIndexBuffer);
+		pd3dDevice->SetVertexDeclaration(ppDecl);
+		pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, pPlanetMesh->GetNumVertices(), 0, pPlanetMesh->GetNumFaces());
+		pEffect->EndPass();
+	}
+	pEffect->End();
+
+    pd3dDevice->EndScene();
+
+		//---------------Draw Sun-------------------
+   
+    // set the rotation for the sun
+//	D3DXMatrixRotationX(&meshRotate, D3DXToRadian(-90.0f));
+	D3DXMatrixTranslation(&meshTranslate, -100, 50, 0);
+
+
+	//WorldViewProj = meshRotate * meshRotate2 * matView * matProj;
+	WorldViewProj =  meshTranslate * matView * matProj;
+
+	pEffect->SetMatrix(hWorldViewProj, &WorldViewProj);
+
+	pSunMesh->GetVertexBuffer(&ppVertexBuffer);
+	pSunMesh->GetIndexBuffer(&ppIndexBuffer);
+
+	pEffect->SetTechnique("rendersun");
+	pEffect->Begin(&cPasses, 0);
+	for (iPass = 0; iPass < cPasses; ++iPass)
+	{
+		pEffect->BeginPass(iPass);
+		pEffect->CommitChanges();
+		pd3dDevice->SetStreamSource(0, ppVertexBuffer, 0, sizeof(VERTEX));
+		pd3dDevice->SetIndices(ppIndexBuffer);
+		pd3dDevice->SetVertexDeclaration(ppDecl);
+		pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, pSunMesh->GetNumVertices(), 0, pSunMesh->GetNumFaces());
+		pEffect->EndPass();
+	}
+	pEffect->End();
+
+    pd3dDevice->EndScene();
+
+}
+
+void RenderBloom ()
+{
+	/*D3DXMATRIX WorldViewProj, meshMat;
+	unsigned int cPasses, iPass;
+
+
+	pd3dDevice->SetRenderTarget(0, ppBloomSurface);
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+
+	pd3dDevice->BeginScene();
+	
+	pEffect->SetTechnique("bloom");
+	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
+	pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
+	pEffect->Begin(&cPasses, 0);
+	for (iPass = 0; iPass < cPasses; ++iPass)
+	{
+		pEffect->BeginPass(iPass);
+		pEffect->CommitChanges();
+		pd3dDevice->SetVertexDeclaration(ppScreenDecl);
+		DrawFullScreenQuad(0.0f, 0.0f, 1.0f, 1.0f);
+		pEffect->EndPass();
+	}
+	pEffect->End();
+	pd3dDevice->EndScene();*/
+
+
+}
+void  RenderFinal ()
+{
+
+	D3DXMATRIX WorldViewProj, meshMat;
+	unsigned int cPasses, iPass;
+
+	pd3dDevice->SetRenderTarget(0, ppBackBuffer);
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+
+	pd3dDevice->BeginScene();
+	
+	pEffect->SetTechnique("final");
+	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
+	pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
+	pEffect->Begin(&cPasses, 0);
+	for (iPass = 0; iPass < cPasses; ++iPass)
+	{
+		pEffect->BeginPass(iPass);
+		pEffect->CommitChanges();
+		pd3dDevice->SetVertexDeclaration(ppScreenDecl);
+		DrawFullScreenQuad(0.0f, 0.0f, 1.0f, 1.0f);
+		pEffect->EndPass();
+	}
+	pEffect->End();
+	pd3dDevice->EndScene();
+}
+
 void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottomV )
 {
     D3DSURFACE_DESC dtdsdRT;
@@ -555,6 +646,7 @@ void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottom
 	pd3dDevice->SetIndices(ppIndexBuffer);
 	pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2);
 	ppScreenVertexBuffer->Release();
+	ppIndexBuffer->Release();
     //pd3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, svQuad, sizeof(SCREENVERTEX));
     //pd3dDevice->SetRenderState(D3DRS_ZENABLE, TRUE);
 }
