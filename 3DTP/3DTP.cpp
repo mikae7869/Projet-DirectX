@@ -255,25 +255,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     break;
 
                 // MOVE LEFT
-                case VK_NUMPAD4:
+				case VK_LEFT:
                     cameraPosition.x -= 10.0f;
                     cameraLook.x -= 10.0f;
                     break;
 
                 // MOVE RIGHT
-                case VK_NUMPAD6:
+                case VK_RIGHT:
                     cameraPosition.x += 10.0f;
                     cameraLook.x += 10.0f;
                     break;
 
 				//ZOOM IN
-                case VK_NUMPAD8:
+                case VK_UP:
                     cameraPosition.z += 10.0f;
                     cameraLook.z += 10.0f;
                     break;
    
 				//ZOOM OUT
-                case VK_NUMPAD2:
+                case VK_DOWN:
                     cameraPosition.z -= 10.0f;
                     cameraLook.z -= 10.0f;
                     break;
@@ -520,7 +520,7 @@ void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottom
     SCREENVERTEX svQuad[4];
 
 	svQuad[0].p = D3DXVECTOR4( -1.0f, -1.0f, 0.5f, 1.0f );
-    svQuad[0].t = D3DXVECTOR2( 0, 0 );
+    svQuad[0].t = D3DXVECTOR2( 1, 1 );
 
 	svQuad[1].p = D3DXVECTOR4( -1.0f, 1.0f, 0.5f, 1.0f );
     svQuad[1].t = D3DXVECTOR2( 1, 0 );
@@ -529,7 +529,7 @@ void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottom
     svQuad[2].t = D3DXVECTOR2( 0, 1 );
 
 	svQuad[3].p = D3DXVECTOR4( 1.0f, 1.0f, 0.5f, 1.0f );
-    svQuad[3].t = D3DXVECTOR2( 1, 1 );
+    svQuad[3].t = D3DXVECTOR2( 0, 0 );
 
     //pd3dDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
 	
