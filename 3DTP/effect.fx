@@ -39,6 +39,16 @@ sampler2D DiffuseMapSampler = sampler_state
 	AddressV	= WRAP;
 };
 
+sampler2D DiffuseMapSamplerScreen = sampler_state
+{
+	Texture		= <DiffuseMap>;
+	MinFilter	= LINEAR;
+	MagFilter	= LINEAR;
+	MipFilter	= LINEAR;
+	AddressU	= Clamp;
+	AddressV	= Clamp;
+};
+
 VertexOutput DiffuseVS(VertexInput input) 
 {
 	VertexOutput output;
@@ -96,12 +106,13 @@ float4 DiffusePS(VertexOutput input) : COLOR0
 
 ScreenVertex FinalVS(ScreenVertex input)
 {
+
 	return input;
 }
 
 float4 FinalPS(ScreenVertex input) : COLOR0
 {
-	return float4(tex2D(DiffuseMapSampler, float2(input.UV.x,input.UV.y)).rgb, 1);
+	return float4(tex2D(DiffuseMapSamplerScreen, float2(input.UV.x,input.UV.y)).rgb, 1);
 	//return float4(1, 0, 0, 1);
 }
 

@@ -138,6 +138,7 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 
 	D3DXCreateTextureFromFile(pd3dDevice, L"./earth.jpg", &ppTextEarth);
 
+
 	LPD3DXBUFFER compilationErrors;
 	LPCWSTR pSrcFile = L"./effect.fx";
 
@@ -307,7 +308,7 @@ bool initDirect3D()
     d3dpp.hDeviceWindow		= wndHandle;
 
     // create a default directx device
-	if(FAILED(pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_REF, wndHandle, D3DCREATE_HARDWARE_VERTEXPROCESSING, &d3dpp, &pd3dDevice)))
+	if(FAILED(pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, wndHandle, D3DCREATE_HARDWARE_VERTEXPROCESSING, &d3dpp, &pd3dDevice)))
 		return false;
 
     //set rendering state
@@ -389,8 +390,8 @@ void render(void)
 	pd3dDevice->BeginScene();
 	
 	pEffect->SetTechnique("final");
-	pEffect->SetTexture(hDiffuseMap, ppTextEarth);
-	//pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
+	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
+	pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
 	pEffect->Begin(&cPasses, 0);
 	for (iPass = 0; iPass < cPasses; ++iPass)
 	{
@@ -518,21 +519,17 @@ void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottom
     // Draw the quad
     SCREENVERTEX svQuad[4];
 
-    svQuad[0].p = D3DXVECTOR4( -0.5f, -0.5f, 0.5f, 1.0f );
 	svQuad[0].p = D3DXVECTOR4( -1.0f, -1.0f, 0.5f, 1.0f );
-    svQuad[0].t = D3DXVECTOR2( fLeftU, fTopV );
+    svQuad[0].t = D3DXVECTOR2( 0, 0 );
 
-    svQuad[1].p = D3DXVECTOR4( fWidth5, -0.5f, 0.5f, 1.0f );
 	svQuad[1].p = D3DXVECTOR4( -1.0f, 1.0f, 0.5f, 1.0f );
-    svQuad[1].t = D3DXVECTOR2( fRightU, fTopV );
+    svQuad[1].t = D3DXVECTOR2( 1, 0 );
 
-    svQuad[2].p = D3DXVECTOR4( -0.5f, fHeight5, 0.5f, 1.0f );
 	svQuad[2].p = D3DXVECTOR4( 1.0f, -1.0f, 0.5f, 1.0f );
-    svQuad[2].t = D3DXVECTOR2( fLeftU, fBottomV );
+    svQuad[2].t = D3DXVECTOR2( 0, 1 );
 
-    svQuad[3].p = D3DXVECTOR4( fWidth5, fHeight5, 0.5f, 1.0f );
 	svQuad[3].p = D3DXVECTOR4( 1.0f, 1.0f, 0.5f, 1.0f );
-    svQuad[3].t = D3DXVECTOR2( fRightU, fBottomV );
+    svQuad[3].t = D3DXVECTOR2( 1, 1 );
 
     //pd3dDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
 	
