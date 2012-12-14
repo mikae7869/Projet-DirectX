@@ -555,6 +555,7 @@ void RenderBloom ()
 	pd3dDevice->BeginScene();
 	
 	pEffect->SetTechnique("bloom");
+
 	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
 	pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
 	pEffect->Begin(&cPasses, 0);
