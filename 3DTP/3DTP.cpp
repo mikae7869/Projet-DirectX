@@ -508,7 +508,7 @@ void RenderScene ()
 	}
 	pEffect->End();
 
-    pd3dDevice->EndScene();
+   
 
 		//---------------Draw Sun-------------------
    

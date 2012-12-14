@@ -41,8 +41,11 @@ struct ScreenBlur {
 	float2 Direction : TEXCOORD8;
 };
 
-float tapWeight[6] = { 0.5f, 0.4f, 0.3f, 0.2f, 0.1f, 0.05f };
-float tapOffset[5] = { 0.003f, 0.006f, 0.009f, 0.012f, 0.020f };
+//float tapWeight[7] = { 0.5f, 0.4f, 0.3f, 0.2f, 0.1f, 0.05f, 0.02f };
+//float tapOffset[6] = { 0.003f, 0.006f, 0.009f, 0.012f, 0.016f, 0.022f};
+
+float tapWeight[10] = { 0.9f, 0.9f, 0.45f, 0.4f, 0.35f, 0.3f, 0.2f, 0.1f, 0.05f, 0.02f };
+float tapOffset[9] = { 0.000f, 0.003f, 0.006f ,0.010f, 0.013f, 0.016f, 0.019f, 0.022f, 0.028f};
 
 static const float BlurWeights[13] = 
 {
@@ -270,16 +273,21 @@ float4 BlurPS(ScreenBlur input) : COLOR0
 	float color = 0;
 	//color = tex2D(DiffuseMapSamplerScreen, input.UV).r * tapWeight[0];
 	
-	for (int i = 0; i < 5; i++)
+	for (int i = 0; i < 9; i++)
 	{
-		float2 tap = input.UV + tapOffset[i] * _scale * input.Direction;
+		float2 tap = input.UV + tapOffset[i] * _scale * float2 (0,1);
 		color += tex2D(DiffuseMapSamplerScreen, tap).r * tapWeight[i+1];
-    }
-	for (int i = 0; i < 5; i++)
-	{
-		float2 tapneg = input.UV - tapOffset[i] * _scale * input.Direction;
+		float2 tapneg = input.UV - tapOffset[i] * _scale * float2 (0,1);
 		color += tex2D(DiffuseMapSamplerScreen, tapneg).r * tapWeight[i+1];
     }
+	for (int i = 0; i < 9; i++)
+	{
+		float2 tap = input.UV + tapOffset[i] * _scale * float2 (1,0);
+		color += tex2D(DiffuseMapSamplerScreen, tap).r * tapWeight[i+1];
+		float2 tapneg = input.UV - tapOffset[i] * _scale * float2 (1,0);
+		color += tex2D(DiffuseMapSamplerScreen, tapneg).r * tapWeight[i+1];
+    }
+
 
 	/*for (int i = 0; i < 13; i++)
 	{
