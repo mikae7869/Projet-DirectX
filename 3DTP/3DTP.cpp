@@ -353,13 +353,14 @@ void render(void)
 //---------------Draw Earth-------------------
    
     // set the rotation for the sun
-	D3DXMatrixRotationX(&meshRotate, D3DXToRadian(-90.0f));
+//	D3DXMatrixRotationX(&meshRotate, D3DXToRadian(-90.0f));
     D3DXMatrixRotationY(&meshRotate2, D3DXToRadian(angle++));
 
     //set the rotation for the moon
     //D3DXMatrixRotationY(&meshRotate2, D3DXToRadian(angle + 30));
 
-	WorldViewProj = meshRotate * meshRotate2 * matView * matProj;
+	//WorldViewProj = meshRotate * meshRotate2 * matView * matProj;
+	WorldViewProj =  meshRotate2 * matView * matProj;
 
 	pEffect->SetMatrix(hWorldViewProj, &WorldViewProj);
 	pEffect->SetTexture(hDiffuseMap, ppTextEarth);
