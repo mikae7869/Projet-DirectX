@@ -50,6 +50,8 @@ float	ZFAR	= 600.f;
 UINT	WIDTH	= 1024;
 UINT	HEIGHT	= 768;
 
+D3DXVECTOR3 LightPosition = D3DXVECTOR3(-100.0f, 50.0f, 0.0f);
+
 // TEXTURES
 LPDIRECT3DTEXTURE9	ppTextEarth;
 LPDIRECT3DTEXTURE9	ppRenderTexture = NULL;
@@ -183,14 +185,13 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 	hLightDiffuseColor = pEffect->GetParameterByName(NULL, "LightDiffuseColor");
 	hLightSpecularColor = pEffect->GetParameterByName(NULL, "LightSpecularColor");
 	hLightDistance = pEffect->GetParameterByName(NULL, "LightDistance");
-
 	hSourceDimensions = pEffect->GetParameterByName(NULL, "g_vSourceDimensions");
 	hDestDimensions = pEffect->GetParameterByName(NULL, "g_vDestinationDimensions");
 	
 	pEffect->SetVector(hLightSpecularColor, &D3DXVECTOR4(1.0f, 1.0f, 1.0f, 1.0f)); // Set specular light color
 	pEffect->SetVector(hLightAmbiantColor, &D3DXVECTOR4(0.15f, 0.15f, 0.15f, 1.0f)); // Set ambiant light color
 	pEffect->SetVector(hLightDiffuseColor, &D3DXVECTOR4(1.0f, 1.0f, 1.0f, 1.0f)); // Set diffuse light color
-	pEffect->SetVector(hLightPosition, &D3DXVECTOR4(-100.0f, 50.0f, 0.0f, 1.0f)); // Set light position
+	pEffect->SetVector(hLightPosition, &D3DXVECTOR4(LightPosition, 1.0f));
 	pEffect->SetFloat(hLightDistance, 600.0f); // Set light propagation distance
 
 	// create the three sphere meshes
@@ -244,16 +245,16 @@ bool initDirect3D()
     d3dpp.BackBufferHeight	= HEIGHT;
     d3dpp.BackBufferWidth	= WIDTH;
     d3dpp.hDeviceWindow		= wndHandle;
+	d3dpp.EnableAutoDepthStencil = true;
+	d3dpp.AutoDepthStencilFormat = D3DFMT_D24S8;
 
     // create a default directx device
 	if(FAILED(pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, wndHandle, D3DCREATE_HARDWARE_VERTEXPROCESSING, &d3dpp, &pd3dDevice)))
 		return false;
 
     //set rendering state
-  //  pd3dDevice->SetRenderState(D3DRS_AMBIENT, D3DCOLOR_XRGB(255, 255, 255));
 	pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CW);
- //pd3dDevice->SetRenderState(D3DRS_WRAP0, D3DWRAPCOORD_0);
-	//pd3dDevice->SetRenderState(D3DRS_ZENABLE, TRUE);
+	pd3dDevice->SetRenderState(D3DRS_ZENABLE, TRUE);
     //pd3dDevice->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
 
     //initialize camera variables
@@ -378,8 +379,9 @@ void RenderScene ()
 	ppRenderTexture->GetSurfaceLevel(0,&ppRenderSurface);
 	pd3dDevice->SetRenderTarget(0, ppRenderSurface);
 	ppRenderSurface->Release();
-    pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
-
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+	
+	D3DXMatrixTranslation(&meshTranslate, -100, 50, 0);
 
 //---------------Draw Earth-------------------
 	D3DXMatrixRotationX(&meshRotate, D3DXToRadian(-90.0f));
@@ -389,7 +391,8 @@ void RenderScene ()
 	pEffect->SetMatrix(hWorldViewProj, &WorldViewProj);
 	pEffect->SetTexture(hDiffuseMap, ppTextEarth);
 	pEffect->SetVector(hCameraPos , &D3DXVECTOR4(cameraPosition, 1.0f));
-
+	pEffect->SetMatrix("ViewProj", &(meshTranslate * matView * matProj));
+	D3DXComputeNormals(pPlanetMesh, NULL);
 	pPlanetMesh->GetVertexBuffer(&ppVertexBuffer);
 	pPlanetMesh->GetIndexBuffer(&ppIndexBuffer);
 
@@ -413,7 +416,6 @@ void RenderScene ()
    
     // set the rotation for the sun
 //	D3DXMatrixRotationX(&meshRotate, D3DXToRadian(-90.0f));
-	D3DXMatrixTranslation(&meshTranslate, -100, 50, 0);
 
 
 	//WorldViewProj = meshRotate * meshRotate2 * matView * matProj;
@@ -449,7 +451,7 @@ void RenderExposure ()
 	ppExposureTexture->GetSurfaceLevel(0,&ppExposureSurface);
 	pd3dDevice->SetRenderTarget(0, ppExposureSurface);
 	ppExposureSurface->Release();
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 	
 	pEffect->SetTechnique("exposure");
@@ -476,7 +478,7 @@ void RenderBloom ()
 	ppBloomTexture->GetSurfaceLevel(0,&ppBloomSurface);
 	pd3dDevice->SetRenderTarget(0, ppBloomSurface);
 	ppBloomSurface->Release();
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 	
 	pEffect->SetTechnique("bloom");
@@ -506,7 +508,7 @@ void RenderBlur ()
 	ppBlurTexture->GetSurfaceLevel(0,&ppBlurSurface);
 	pd3dDevice->SetRenderTarget(0, ppBlurSurface);
 	ppBlurSurface->Release();
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 	
 	pEffect->SetTechnique("blur");
@@ -532,7 +534,7 @@ void  RenderFinal ()
 	unsigned int cPasses, iPass;
 
 	pd3dDevice->SetRenderTarget(0, ppBackBuffer);
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 	
 	pEffect->SetTechnique("final");
