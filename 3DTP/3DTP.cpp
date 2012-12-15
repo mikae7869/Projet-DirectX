@@ -156,7 +156,7 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &ppRenderTexture, NULL);
 	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &ppBloomTexture, NULL);
 	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &ppBlurTexture, NULL);
-	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &ppExposureTexture, NULL);
+	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &ppExposureTexture, NULL);
 	// Get Surface Texture
 	ppRenderTexture->GetSurfaceLevel(0, &ppRenderSurface);
 	ppBloomTexture->GetSurfaceLevel(0, &ppBloomSurface);
@@ -253,7 +253,7 @@ bool initDirect3D()
   //  pd3dDevice->SetRenderState(D3DRS_AMBIENT, D3DCOLOR_XRGB(255, 255, 255));
 	pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CW);
  //pd3dDevice->SetRenderState(D3DRS_WRAP0, D3DWRAPCOORD_0);
-	//pd3dDevice->SetRenderState(D3DRS_ZENABLE, TRUE);
+	pd3dDevice->SetRenderState(D3DRS_ZENABLE, TRUE);
     //pd3dDevice->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
 
     //initialize camera variables
@@ -284,13 +284,11 @@ void render(void)
 
 	RenderScene ();
 
-	//RenderExposure ();
+	RenderExposure ();
 
 	RenderBloom();
 
 	RenderBlur ();
-
-	//RenderGaussianBlur ();
 
 	RenderFinal ();
 
@@ -378,7 +376,7 @@ void RenderScene ()
 	ppRenderTexture->GetSurfaceLevel(0,&ppRenderSurface);
 	pd3dDevice->SetRenderTarget(0, ppRenderSurface);
 	ppRenderSurface->Release();
-    pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+    pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 
 //---------------Draw Earth-------------------
@@ -449,7 +447,7 @@ void RenderExposure ()
 	ppExposureTexture->GetSurfaceLevel(0,&ppExposureSurface);
 	pd3dDevice->SetRenderTarget(0, ppExposureSurface);
 	ppExposureSurface->Release();
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 	
 	pEffect->SetTechnique("exposure");
@@ -476,7 +474,7 @@ void RenderBloom ()
 	ppBloomTexture->GetSurfaceLevel(0,&ppBloomSurface);
 	pd3dDevice->SetRenderTarget(0, ppBloomSurface);
 	ppBloomSurface->Release();
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 	
 	pEffect->SetTechnique("bloom");
@@ -506,7 +504,7 @@ void RenderBlur ()
 	ppBlurTexture->GetSurfaceLevel(0,&ppBlurSurface);
 	pd3dDevice->SetRenderTarget(0, ppBlurSurface);
 	ppBlurSurface->Release();
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 	
 	pEffect->SetTechnique("blur");
@@ -532,12 +530,12 @@ void  RenderFinal ()
 	unsigned int cPasses, iPass;
 
 	pd3dDevice->SetRenderTarget(0, ppBackBuffer);
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 	
 	pEffect->SetTechnique("final");
 	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
-	pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
+	pEffect->SetTexture(hDiffuseMap, ppExposureTexture);
 	pEffect->SetTexture(hBloomBlurMap, ppBlurTexture);
 	pEffect->Begin(&cPasses, 0);
 	for (iPass = 0; iPass < cPasses; ++iPass)
@@ -593,10 +591,11 @@ void createScreenQuad ()
 
 void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottomV )
 {
-
+	pd3dDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
 	pd3dDevice->SetStreamSource(0, ppScreenVertexBuffer, 0, sizeof(SCREENVERTEX));
 	pd3dDevice->SetIndices(ppScreenIndexBuffer);
 	pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2);
+	pd3dDevice->SetRenderState(D3DRS_ZENABLE, TRUE);
 
 
 }
