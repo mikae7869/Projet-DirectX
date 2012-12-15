@@ -55,12 +55,14 @@ LPDIRECT3DTEXTURE9	ppTextEarth;
 LPDIRECT3DTEXTURE9	ppRenderTexture = NULL;
 LPDIRECT3DTEXTURE9	ppBloomTexture = NULL;
 LPDIRECT3DTEXTURE9	ppBlurTexture = NULL;
+LPDIRECT3DTEXTURE9	ppExposureTexture = NULL;
 
 // SURFACES
 LPDIRECT3DSURFACE9	ppRenderSurface = NULL;
 LPDIRECT3DSURFACE9	ppBackBuffer = NULL;
 LPDIRECT3DSURFACE9	ppBloomSurface = NULL;
 LPDIRECT3DSURFACE9	ppBlurSurface = NULL;
+LPDIRECT3DSURFACE9	ppExposureSurface = NULL;
 
 // SHADER
 LPD3DXEFFECT	pEffect;
@@ -111,7 +113,7 @@ void RenderBloom ();
 void RenderBlur ();
 void RenderGaussianBlur ();
 void createScreenQuad ();
-
+void RenderExposure ();
 // DirectX functions
 bool initDirect3D();
 void render(void);
@@ -154,11 +156,12 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &ppRenderTexture, NULL);
 	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &ppBloomTexture, NULL);
 	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &ppBlurTexture, NULL);
-
+	pd3dDevice->CreateTexture(WIDTH, HEIGHT, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &ppExposureTexture, NULL);
 	// Get Surface Texture
 	ppRenderTexture->GetSurfaceLevel(0, &ppRenderSurface);
 	ppBloomTexture->GetSurfaceLevel(0, &ppBloomSurface);
 	ppBlurTexture->GetSurfaceLevel(0, &ppBlurSurface);
+	ppExposureTexture->GetSurfaceLevel(0, &ppExposureSurface);
 
 	D3DXCreateTextureFromFile(pd3dDevice, L"./earth.jpg", &ppTextEarth);
 
@@ -342,9 +345,10 @@ bool initDirect3D()
 		return false;
 
     //set rendering state
-    //pd3dDevice->SetRenderState(D3DRS_AMBIENT, D3DCOLOR_XRGB(255, 255, 255));
-	pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+    pd3dDevice->SetRenderState(D3DRS_AMBIENT, D3DCOLOR_XRGB(255, 255, 255));
+
 	pd3dDevice->SetRenderState(D3DRS_WRAP0, D3DWRAPCOORD_0);
+	pd3dDevice->SetRenderState(D3DRS_ZENABLE, TRUE);
     //pd3dDevice->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
 
     //initialize camera variables
@@ -371,9 +375,11 @@ void render(void)
     createCamera(ZNEAR, ZFAR);  // near clip plane, far clip plane
     pointCamera(cameraLook);
 
-	
+    pd3dDevice->BeginScene();	
 
 	RenderScene ();
+
+	RenderExposure ();
 
 	RenderBloom();
 
@@ -384,7 +390,7 @@ void render(void)
 	RenderFinal ();
 
 
-	
+	pd3dDevice->EndScene();
 
     // Present the backbuffer contents to the display
     pd3dDevice->Present(NULL, NULL, NULL, NULL);
@@ -460,6 +466,11 @@ LPD3DXMESH CreateMappedSphere(LPDIRECT3DDEVICE9 pDev, float fRad, UINT slices, U
 *************************************************************************/
 void Release(void)
 {
+	if (ppScreenVertexBuffer != NULL)
+		ppScreenVertexBuffer->Release();
+	if (ppScreenIndexBuffer != NULL)
+		ppScreenIndexBuffer->Release();
+
 	// release meshes
 	if (pSunMesh != NULL)
 		pSunMesh->Release();
@@ -487,7 +498,8 @@ void Release(void)
 
 void RenderScene ()
 {
-	    D3DXMATRIX WorldViewProj, meshTranslate;
+	    D3DXMATRIX WorldViewProj, meshTranslate, meshRotate, meshRotate2;
+		static int angle = 0;
 	unsigned int cPasses, iPass;
 
 	// Set Render Target the Render Scene
@@ -495,11 +507,10 @@ void RenderScene ()
 
     pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
-    pd3dDevice->BeginScene();
-
 //---------------Draw Earth-------------------
-   
-	WorldViewProj =  matView * matProj;
+	D3DXMatrixRotationX(&meshRotate, D3DXToRadian(-90.0f));
+   D3DXMatrixRotationY(&meshRotate2, D3DXToRadian(angle++));
+	WorldViewProj = meshRotate * meshRotate2 *  matView * matProj;
 
 	pEffect->SetMatrix(hWorldViewProj, &WorldViewProj);
 	pEffect->SetTexture(hDiffuseMap, ppTextEarth);
@@ -553,22 +564,20 @@ void RenderScene ()
 	}
 	pEffect->End();
 
-    pd3dDevice->EndScene();
-
 }
 
-void RenderBloom ()
+void RenderExposure ()
 {
+
 	D3DXMATRIX WorldViewProj, meshMat;
 	unsigned int cPasses, iPass;
 
 
-	pd3dDevice->SetRenderTarget(0, ppBloomSurface);
+	pd3dDevice->SetRenderTarget(0, ppExposureSurface);
 	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
-	pd3dDevice->BeginScene();
 	
-	pEffect->SetTechnique("bloom");
+	pEffect->SetTechnique("exposure");
 
 	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
 	pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
@@ -582,7 +591,31 @@ void RenderBloom ()
 		pEffect->EndPass();
 	}
 	pEffect->End();
-	pd3dDevice->EndScene();
+}
+
+void RenderBloom ()
+{
+	D3DXMATRIX WorldViewProj, meshMat;
+	unsigned int cPasses, iPass;
+
+
+	pd3dDevice->SetRenderTarget(0, ppBloomSurface);
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+
+	
+	pEffect->SetTechnique("bloom");
+
+	pEffect->SetTexture(hDiffuseMap, ppExposureTexture);
+	pEffect->Begin(&cPasses, 0);
+	for (iPass = 0; iPass < cPasses; ++iPass)
+	{
+		pEffect->BeginPass(iPass);
+		pEffect->CommitChanges();
+		pd3dDevice->SetVertexDeclaration(ppScreenDecl);
+		DrawFullScreenQuad(0.0f, 0.0f, 1.0f, 1.0f);
+		pEffect->EndPass();
+	}
+	pEffect->End();
 
 
 }
@@ -594,9 +627,7 @@ void RenderGaussianBlur ()
 
 
 	pd3dDevice->SetRenderTarget(0, ppBlurSurface);
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
-
-	pd3dDevice->BeginScene();
+	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET , D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 	
 	pEffect->SetTechnique("GaussianBlur");
 		D3DXVECTOR2 SourceSize[2];
@@ -616,8 +647,8 @@ void RenderGaussianBlur ()
 		pEffect->EndPass();
 	}
 	pEffect->End();
-	pd3dDevice->EndScene();
 }
+
 
 
 void RenderBlur ()
@@ -629,7 +660,6 @@ void RenderBlur ()
 	pd3dDevice->SetRenderTarget(0, ppBlurSurface);
 	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
-	pd3dDevice->BeginScene();
 	
 	pEffect->SetTechnique("blur");
 	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
@@ -645,7 +675,6 @@ void RenderBlur ()
 		pEffect->EndPass();
 	}
 	pEffect->End();
-	pd3dDevice->EndScene();
 }
 
 void  RenderFinal ()
@@ -657,7 +686,6 @@ void  RenderFinal ()
 	pd3dDevice->SetRenderTarget(0, ppBackBuffer);
 	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
-	pd3dDevice->BeginScene();
 	
 	pEffect->SetTechnique("final");
 	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
@@ -673,7 +701,7 @@ void  RenderFinal ()
 		pEffect->EndPass();
 	}
 	pEffect->End();
-	pd3dDevice->EndScene();
+
 }
 
 void createScreenQuad ()
@@ -681,17 +709,20 @@ void createScreenQuad ()
 	   // Draw the quad
     SCREENVERTEX svQuad[4];
 
-	svQuad[0].p = D3DXVECTOR4( -1.0f, -1.0f, 0.0f, 1.0f );
+	svQuad[0].p = D3DXVECTOR4( -1.0f, -1.0f, 0.5f, 1.0f );
     svQuad[0].t = D3DXVECTOR2( 0, 1 );
 
-	svQuad[1].p = D3DXVECTOR4( -1.0f, 1.0f, 0.0f, 1.0f );
+	svQuad[1].p = D3DXVECTOR4( -1.0f, 1.0f, 0.5f, 1.0f );
     svQuad[1].t = D3DXVECTOR2( 0, 0 );
 
-	svQuad[2].p = D3DXVECTOR4( 1.0f, -1.0f, 0.0f, 1.0f );
+	svQuad[2].p = D3DXVECTOR4( 1.0f, -1.0f, 0.5f, 1.0f );
     svQuad[2].t = D3DXVECTOR2( 1, 1 );
 
-	svQuad[3].p = D3DXVECTOR4( 1.0f, 1.0f, 0.0f, 1.0f );
+	svQuad[3].p = D3DXVECTOR4( 1.0f, 1.0f, 0.5f, 1.0f );
     svQuad[3].t = D3DXVECTOR2( 1, 0 );
+
+
+
 
 
 
@@ -701,9 +732,13 @@ void createScreenQuad ()
 	ppScreenVertexBuffer->Lock(0, sizeof(svQuad), (void**)&pVoid, 0);    // lock the vertex buffer
 	memcpy(pVoid, svQuad, sizeof(svQuad));    // copy the vertices to the locked buffer
 	ppScreenVertexBuffer->Unlock();    // unlock the vertex buffer
-	short indices[] =
+	/*short indices[] =
 	{
 		1,3,0, 2
+	};*/
+	short indices[] =
+	{
+		1,3,0, 0,3,2
 	};
 	pd3dDevice->CreateIndexBuffer(sizeof(indices), D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_MANAGED, &ppScreenIndexBuffer, NULL);
 	ppScreenIndexBuffer->Lock(0, sizeof(indices), (void**)&pVoid, 0);
@@ -760,10 +795,11 @@ void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottom
 	ppScreenIndexBuffer->Lock(0, sizeof(indices), (void**)&pVoid, 0);
 	memcpy(pVoid, indices, sizeof(indices));
 	ppScreenIndexBuffer->Unlock();*/
-
+		pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
 	pd3dDevice->SetStreamSource(0, ppScreenVertexBuffer, 0, sizeof(SCREENVERTEX));
 	pd3dDevice->SetIndices(ppScreenIndexBuffer);
-	pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLESTRIP, 0, 0, 4, 0, 2);
+	pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2);
+	pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CW);
 	//ppScreenVertexBuffer->Release();
 	//ppIndexBuffer->Release();
     //pd3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, svQuad, sizeof(SCREENVERTEX));

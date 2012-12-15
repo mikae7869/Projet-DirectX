@@ -361,7 +361,14 @@ float4 GaussianBlurH (in float2 in_vTexCoord : TEXCOORD0,
 	return vColor;
 }
 
-
+float4  ExposureControl(ScreenBlur input) : COLOR0 
+{
+	return tex2D(DiffuseMapSamplerScreen, input.UV);
+	/*float2 vtc = float2( 1 , 0.5 );
+	float vignette = pow( 1 - ( dot( vtc, vtc ) * 1.0 ), 2.0 );
+	float4 exposed = 1.0 - pow( 2.71, -( vignette * tex2D(DiffuseMapSamplerScreen, input.UV) * 2.0 ) );
+	return exposed;*/
+}
 
 technique diffuse
 {
@@ -419,5 +426,14 @@ technique GaussianBlur
     {
         VertexShader = compile vs_3_0 PostProcessVS();
         PixelShader = compile ps_3_0 GaussianBlurH(6, false);
+    }
+}
+
+technique exposure
+{
+    pass p0
+    {
+        VertexShader = compile vs_3_0 PostProcessVS();
+        PixelShader = compile ps_3_0 ExposureControl();
     }
 }
