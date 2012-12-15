@@ -286,13 +286,13 @@ void render(void)
 
 	//RenderExposure ();
 
-	RenderBloom();
+	//RenderBloom();
 
-	//RenderBlur ();
+	RenderBlur ();
 
 	//RenderGaussianBlur ();
 
-	//RenderFinal ();
+	RenderFinal ();
 
 
 	pd3dDevice->EndScene();
@@ -473,9 +473,9 @@ void RenderBloom ()
 	D3DXMATRIX WorldViewProj, meshMat;
 	unsigned int cPasses, iPass;
 
-	//ppBloomTexture->GetSurfaceLevel(0,&ppBloomSurface);
-	pd3dDevice->SetRenderTarget(0, ppBackBuffer);
-	//ppBloomSurface->Release();
+	ppBloomTexture->GetSurfaceLevel(0,&ppBloomSurface);
+	pd3dDevice->SetRenderTarget(0, ppBloomSurface);
+	ppBloomSurface->Release();
 	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 	
