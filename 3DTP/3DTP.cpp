@@ -346,7 +346,7 @@ bool initDirect3D()
 
     //set rendering state
     pd3dDevice->SetRenderState(D3DRS_AMBIENT, D3DCOLOR_XRGB(255, 255, 255));
-
+	pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CW);
 	pd3dDevice->SetRenderState(D3DRS_WRAP0, D3DWRAPCOORD_0);
 	pd3dDevice->SetRenderState(D3DRS_ZENABLE, TRUE);
     //pd3dDevice->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
@@ -722,10 +722,6 @@ void createScreenQuad ()
     svQuad[3].t = D3DXVECTOR2( 1, 0 );
 
 
-
-
-
-
 	VOID*	pVoid;
 
 	pd3dDevice->CreateVertexBuffer(sizeof(svQuad), 0, 0, D3DPOOL_MANAGED, &ppScreenVertexBuffer, NULL);
@@ -738,7 +734,7 @@ void createScreenQuad ()
 	};*/
 	short indices[] =
 	{
-		1,3,0, 0,3,2
+		3,1,0, 0,2,3
 	};
 	pd3dDevice->CreateIndexBuffer(sizeof(indices), D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_MANAGED, &ppScreenIndexBuffer, NULL);
 	ppScreenIndexBuffer->Lock(0, sizeof(indices), (void**)&pVoid, 0);
@@ -795,11 +791,10 @@ void DrawFullScreenQuad( float fLeftU, float fTopV, float fRightU, float fBottom
 	ppScreenIndexBuffer->Lock(0, sizeof(indices), (void**)&pVoid, 0);
 	memcpy(pVoid, indices, sizeof(indices));
 	ppScreenIndexBuffer->Unlock();*/
-		pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+	//	pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
 	pd3dDevice->SetStreamSource(0, ppScreenVertexBuffer, 0, sizeof(SCREENVERTEX));
 	pd3dDevice->SetIndices(ppScreenIndexBuffer);
 	pd3dDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2);
-	pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CW);
 	//ppScreenVertexBuffer->Release();
 	//ppIndexBuffer->Release();
     //pd3dDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, svQuad, sizeof(SCREENVERTEX));
