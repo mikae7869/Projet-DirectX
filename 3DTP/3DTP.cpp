@@ -286,9 +286,9 @@ void render(void)
 
 	//RenderExposure ();
 
-	//RenderBloom();
+	RenderBloom();
 
-	RenderBlur ();
+	//RenderBlur ();
 
 	//RenderGaussianBlur ();
 
@@ -473,15 +473,15 @@ void RenderBloom ()
 	D3DXMATRIX WorldViewProj, meshMat;
 	unsigned int cPasses, iPass;
 
-	ppBloomTexture->GetSurfaceLevel(0,&ppBloomSurface);
-	pd3dDevice->SetRenderTarget(0, ppBloomSurface);
-	ppBloomSurface->Release();
+	//ppBloomTexture->GetSurfaceLevel(0,&ppBloomSurface);
+	pd3dDevice->SetRenderTarget(0, ppBackBuffer);
+	//ppBloomSurface->Release();
 	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 	
 	pEffect->SetTechnique("bloom");
 
-	pEffect->SetTexture(hDiffuseMap, ppExposureTexture);
+	pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
 	pEffect->Begin(&cPasses, 0);
 	for (iPass = 0; iPass < cPasses; ++iPass)
 	{
@@ -532,9 +532,9 @@ void RenderBlur ()
 	D3DXMATRIX WorldViewProj, meshMat;
 	unsigned int cPasses, iPass;
 
-//	ppBlurTexture->GetSurfaceLevel(0,&ppBlurSurface);
-	pd3dDevice->SetRenderTarget(0, ppBackBuffer);
-//	ppBlurSurface->Release();
+	ppBlurTexture->GetSurfaceLevel(0,&ppBlurSurface);
+	pd3dDevice->SetRenderTarget(0, ppBlurSurface);
+	ppBlurSurface->Release();
 	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 	
