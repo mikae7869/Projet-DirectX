@@ -236,35 +236,14 @@ ScreenVertex BloomVS(ScreenVertex input)
 float4 BloomPS(ScreenVertex input) : COLOR0
 {
 	float4 pixel = float4(tex2D(DiffuseMapSamplerScreen, float2(input.UV.x,input.UV.y)).rgb, 1);
-	//float intensity = dot(pixel, float4(0.3,0.59,0.11,0);
 	float4 diff = pixel - float4(0.9,0.9,0.9,0);
 	if (diff.x <= 0 || diff.y <= 0 || diff.z <= 0 )
 	{
 		return (float4(0,0,0,1));
 	}
-	return (float4(1,1,1,1)); //float4 treshold value
-	//return float4(1, 0, 0, 1);
-}
-/*
-ScreenVertex BlurVS(ScreenVertex input)
-{
-
-	return input;
+	return (float4(1,1,1,1));
 }
 
-float4 BlurPS(ScreenVertex input) : COLOR0
-{
-	float blurOffset	=	0.006;
-	float4 color		=	0;
- 
-	color  = tex2D(DiffuseMapSamplerScreen, float2(input.UV.x + blurOffset, input.UV.y + blurOffset));
-	color += tex2D(DiffuseMapSamplerScreen, float2(input.UV.x - blurOffset, input.UV.y - blurOffset));
-	color += tex2D(DiffuseMapSamplerScreen, float2(input.UV.x + blurOffset, input.UV.y - blurOffset));
-	color += tex2D(DiffuseMapSamplerScreen, float2(input.UV.x - blurOffset, input.UV.y + blurOffset));
-	color = color / 4;
- 
-	return color;
-}*/
 
 ScreenBlur BlurVS(ScreenVertex input, uniform float2 DIRECTION)
 {
@@ -303,21 +282,6 @@ float4 BlurPS(ScreenBlur input) : COLOR0
 		float2 tapneg = input.UV - tapOffset[i] * _scale * float2 (1,0);
 		color += tex2D(DiffuseMapSamplerScreen, tapneg) * tapWeight[i+1];
     }
-
-
-	/*for (int i = 0; i < 13; i++)
-	{
-		float2 tap = input.UV + PixelKernel[i] * _scale * input.Direction;
-		color += tex2D(DiffuseMapSamplerScreen, tap).r * BlurWeights[i];
-    }
-	for (int i = 0; i < 3; i++)
-	{
-		float2 tapneg = input.UV - PixelKernel[i] * _scale * input.Direction;
-		color += tex2D(DiffuseMapSamplerScreen, tapneg).r * BlurWeights[i];
-    }*/
-
-
-	
 	return float4(color, color, color, 1);
 }
 
@@ -332,42 +296,24 @@ ScreenVertex PostProcessVS(ScreenVertex input)
 	return input;
 }
 
-float CalcGaussianWeight(int iSamplePoint)
-{
-	float g = 1.0f / sqrt(2.0f * 3.14159 * g_fSigma * g_fSigma);  
-	return (g * exp(-(iSamplePoint * iSamplePoint) / (2 * g_fSigma * g_fSigma)));
-}
-
-float4 GaussianBlurH (in float2 in_vTexCoord : TEXCOORD0,
-						uniform int iRadius,
-						uniform int bEncodeLogLuv)	: COLOR0
-{
-    float4 vColor = 0;
-	float2 vTexCoord = in_vTexCoord;
-
-    for (int i = -iRadius; i < iRadius; i++)
-    {   
-		float fWeight = CalcGaussianWeight(i);
-		vTexCoord.x = in_vTexCoord.x + (i / g_vSourceDimensions.x);
-		float4 vSample = tex2D(PointSampler0, vTexCoord);
-		/*if (bEncodeLogLuv)
-			vSample = float4(LogLuvDecode(vSample), 1.0f);*/
-		vColor += vSample * fWeight;
-    }
-
-	/*if (bEncodeLogLuv)
-		vColor = LogLuvEncode(vColor.rgb);*/
-	
-	return vColor;
-}
 
 float4  ExposureControl(ScreenBlur input) : COLOR0 
 {
-	return tex2D(DiffuseMapSamplerScreen, input.UV);
-	/*float2 vtc = float2( 1 , 0.5 );
-	float vignette = pow( 1 - ( dot( vtc, vtc ) * 1.0 ), 2.0 );
+	//return tex2D(DiffuseMapSamplerScreen, input.UV);
+/*	float2 vtc = float2( 1 , 0.5 );
+	float vignette = pow( 1 - ( dot( vtc, vtc ) * 1.0 ), 0.5 );
 	float4 exposed = 1.0 - pow( 2.71, -( vignette * tex2D(DiffuseMapSamplerScreen, input.UV) * 2.0 ) );
 	return exposed;*/
+	float Luminance = 0.08f;
+static const float fMiddleGray = 0.18f;
+static const float fWhiteCutoff = 0.8f;
+	    float4 Color;
+
+    Color = tex2D( DiffuseMapSamplerScreen, input.UV ) * fMiddleGray / ( Luminance + 0.001f );
+    Color *= ( 1.0f + ( Color / ( fWhiteCutoff * fWhiteCutoff ) ) );
+    Color /= ( 1.0f + Color );
+
+    return Color;
 }
 
 technique diffuse
@@ -420,14 +366,6 @@ technique blur
 	}
 }
 
-technique GaussianBlur
-{
-    pass p0
-    {
-        VertexShader = compile vs_3_0 PostProcessVS();
-        PixelShader = compile ps_3_0 GaussianBlurH(6, false);
-    }
-}
 
 technique exposure
 {

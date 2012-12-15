@@ -250,10 +250,10 @@ bool initDirect3D()
 		return false;
 
     //set rendering state
-    pd3dDevice->SetRenderState(D3DRS_AMBIENT, D3DCOLOR_XRGB(255, 255, 255));
+  //  pd3dDevice->SetRenderState(D3DRS_AMBIENT, D3DCOLOR_XRGB(255, 255, 255));
 	pd3dDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_CW);
-	pd3dDevice->SetRenderState(D3DRS_WRAP0, D3DWRAPCOORD_0);
-	pd3dDevice->SetRenderState(D3DRS_ZENABLE, TRUE);
+ //pd3dDevice->SetRenderState(D3DRS_WRAP0, D3DWRAPCOORD_0);
+	//pd3dDevice->SetRenderState(D3DRS_ZENABLE, TRUE);
     //pd3dDevice->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
 
     //initialize camera variables
@@ -286,7 +286,7 @@ void render(void)
 
 	//RenderExposure ();
 
-	//RenderBloom();
+	RenderBloom();
 
 	RenderBlur ();
 
@@ -496,35 +496,6 @@ void RenderBloom ()
 
 }
 
-void RenderGaussianBlur ()
-{
-	D3DXMATRIX WorldViewProj, meshMat;
-	unsigned int cPasses, iPass;
-
-
-	pd3dDevice->SetRenderTarget(0, ppBlurSurface);
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET , D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
-	
-	pEffect->SetTechnique("GaussianBlur");
-		D3DXVECTOR2 SourceSize[2];
-	D3DSURFACE_DESC desc;
-	ppBloomTexture->GetLevelDesc(0, &desc); // Level 0 is top most.
-	SourceSize->x = desc.Width;
-	SourceSize->y = desc.Height;
-	pEffect->SetValue(hSourceDimensions, SourceSize, sizeof (SourceSize));
-	pEffect->SetTexture(hDiffuseMap, ppBloomTexture);
-	pEffect->Begin(&cPasses, 0);
-	for (iPass = 0; iPass < cPasses; ++iPass)
-	{
-		pEffect->BeginPass(iPass);
-		pEffect->CommitChanges();
-		pd3dDevice->SetVertexDeclaration(ppScreenDecl);
-		DrawFullScreenQuad(0.0f, 0.0f, 1.0f, 1.0f);
-		pEffect->EndPass();
-	}
-	pEffect->End();
-}
-
 
 
 void RenderBlur ()
@@ -540,7 +511,7 @@ void RenderBlur ()
 	
 	pEffect->SetTechnique("blur");
 	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
-	pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
+	pEffect->SetTexture(hDiffuseMap, ppBloomTexture);
 
 	pEffect->Begin(&cPasses, 0);
 	for (iPass = 0; iPass < cPasses; ++iPass)
