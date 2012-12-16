@@ -369,6 +369,9 @@ LPD3DXMESH CreateMappedSphere(LPDIRECT3DDEVICE9 pDev, float fRad, UINT slices, U
 
 void RenderScene ()
 {
+	DWORD tempwrap0;
+	pd3dDevice->GetRenderState(D3DRS_WRAP0, &tempwrap0);
+	pd3dDevice->SetRenderState(D3DRS_WRAP0, D3DWRAPCOORD_0);
 	    D3DXMATRIX WorldViewProj, meshTranslate, meshRotate, meshRotate2;
 		static int angle = 0;
 	unsigned int cPasses, iPass;
@@ -439,6 +442,7 @@ void RenderScene ()
 		pEffect->EndPass();
 	}
 	pEffect->End();
+	pd3dDevice->SetRenderState(D3DRS_WRAP0, tempwrap0);
 
 }
 
