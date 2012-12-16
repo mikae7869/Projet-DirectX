@@ -784,7 +784,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					//rotate up vector
 					D3DXVec3TransformCoord(&cameraUp,&cameraUp,&(matRotAxis * matRotZ));
 					//translate up vector
-					cameraLook = vDirection + cameraPosition;
+					cameraUp = vDirection + cameraLook;
 
 					D3DXMatrixLookAtLH(&matView,&cameraPosition,&cameraLook,&cameraUp);
 			}
