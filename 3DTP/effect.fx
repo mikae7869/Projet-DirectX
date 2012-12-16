@@ -42,50 +42,14 @@ struct ScreenBlur {
 	float2 Tap2Neg : TEXCOORD5;
 	float2 Tap3Neg : TEXCOORD6;
 	float2 UV : TEXCOORD7;
-	float2 Direction : TEXCOORD8;
 };
 
+/*
+float tapWeight[12] = { 0.55f, 0.5f, 0.45f, 0.4f, 0.35f, 0.3f, 0.2f, 0.1f, 0.05f, 0.02f, 0.01f, 0.001f };
+float tapOffset[11] = { 0.001f, 0.005f, 0.010f ,0.015f, 0.020f, 0.025f, 0.030f, 0.035f, 0.040f, 0.045f, 0.050f};*/
 
-
-//float tapWeight[7] = { 0.5f, 0.4f, 0.3f, 0.2f, 0.1f, 0.05f, 0.02f };
-//float tapOffset[6] = { 0.003f, 0.006f, 0.009f, 0.012f, 0.016f, 0.022f};
-
-float tapWeight[10] = { 0.9f, 0.9f, 0.45f, 0.4f, 0.35f, 0.3f, 0.2f, 0.1f, 0.05f, 0.02f };
-float tapOffset[9] = { 0.000f, 0.003f, 0.006f ,0.010f, 0.013f, 0.016f, 0.019f, 0.022f, 0.028f};
-
-static const float BlurWeights[13] = 
-{
-    0.002216,
-    0.008764,
-    0.026995,
-    0.064759,
-    0.120985,
-    0.176033,
-    0.199471,
-    0.176033,
-    0.120985,
-    0.064759,
-    0.026995,
-    0.008764,
-    0.002216,
-};
-
-float PixelKernel[13] =
-{
-    -6,
-    -5,
-    -4,
-    -3,
-    -2,
-    -1,
-     0,
-     1,
-     2,
-     3,
-     4,
-     5,
-     6,
-};
+float tapWeight[18] = { 0.55f, 0.5f, 0.45f, 0.4f, 0.35f, 0.3f, 0.2f, 0.1f, 0.05f, 0.02f, 0.014f, 0.008f, 0.005f, 0.0032f, 0.0028f, 0.0024f, 0.002f, 0.001f };
+float tapOffset[17] = { 0.001f, 0.005f, 0.010f ,0.015f, 0.020f, 0.025f, 0.030f, 0.040f, 0.050f, 0.060f, 0.070f, 0.080f, 0.090f, 0.1f, 0.11f, 0.13, 0.16};
 
 float _scale = 1;
 
@@ -149,7 +113,7 @@ VertexOutput DiffuseVS(VertexInput input)
 {
 	VertexOutput output;
 	output.Position = mul(float4(input.Position, 1.0f), WorldViewProj);
-	output.Normal = input.Normal;
+	output.Normal = mul(input.Normal, (float3x3)WorldViewProj);
 	output.psPosition = output.Position;
 
 	float  p = 3.141592f;
@@ -210,17 +174,20 @@ ScreenVertex FinalVS(ScreenVertex input)
 
 float4 FinalPS(ScreenVertex input) : COLOR0
 {
-	// Nous récupèrons les 2 textures : le bloom et l'image.
-	float4 tbloom = tex2D(BloomMapSamplerScreen, input.UV);
-	float4 tbase = tex2D(DiffuseMapSamplerScreen, input.UV);
+	//Tone Mapping
+	float2 inTex = input.UV;
 
-	// Désaturation d'image de base pour ne pas avoir de couleurs trop vives une fois la texture de bloom ajoutée.
-	// Plus l'intensité de la lumière est forte, plus on la diminue : on prend l'opposé en RGB.
-	tbase = tbase * (1 - tbloom);
- 
-	// Finalement, nous assemblons les 2 images.
-	return  tbase + tbloom;
-	//return float4(1, 0, 0, 1);
+	float4 original = tex2D( DiffuseMapSamplerScreen, inTex);
+	float4 blur		= tex2D( BloomMapSamplerScreen, inTex );
+	inTex		   -= 0.5;
+	float vignette	= 1 - dot( inTex, inTex );
+	blur *= pow( vignette, 4.0 );
+	blur *= 2;
+	blur = pow (blur, 0.55);
+
+	float4 color = lerp( original, blur, 0.4f ); //Add
+
+	return color;
 }
 
 
@@ -250,90 +217,59 @@ ScreenVertex BloomVS(ScreenVertex input)
 float4 BloomPS(ScreenVertex input) : COLOR0
 {
 	float4 pixel = float4(tex2D(DiffuseMapSamplerScreen, float2(input.UV.x,input.UV.y)).rgb, 1);
-	//float intensity = dot(pixel, float4(0.3,0.59,0.11,0);
 	float4 diff = pixel - float4(0.9,0.9,0.9,0);
 	if (diff.x <= 0 || diff.y <= 0 || diff.z <= 0 )
 	{
 		return (float4(0,0,0,1));
 	}
-	return (float4(1,1,1,1)); //float4 treshold value
-	//return float4(1, 0, 0, 1);
-}
-/*
-ScreenVertex BlurVS(ScreenVertex input)
-{
+	return (float4(1,1,1,1)); 
 
-	return input;
 }
 
-float4 BlurPS(ScreenVertex input) : COLOR0
-{
-	float blurOffset	=	0.006;
-	float4 color		=	0;
- 
-	color  = tex2D(DiffuseMapSamplerScreen, float2(input.UV.x + blurOffset, input.UV.y + blurOffset));
-	color += tex2D(DiffuseMapSamplerScreen, float2(input.UV.x - blurOffset, input.UV.y - blurOffset));
-	color += tex2D(DiffuseMapSamplerScreen, float2(input.UV.x + blurOffset, input.UV.y - blurOffset));
-	color += tex2D(DiffuseMapSamplerScreen, float2(input.UV.x - blurOffset, input.UV.y + blurOffset));
-	color = color / 4;
- 
-	return color;
-}*/
 
-ScreenBlur BlurVS(ScreenVertex input, uniform float2 DIRECTION)
+ScreenBlur BlurVS(ScreenVertex input)
 {
 	ScreenBlur OUT;
 
 	OUT.position = input.Position;
-	OUT.Direction = DIRECTION;
 	OUT.Tap0 = input.UV;
 	OUT.UV = input.UV;
-	OUT.Tap1 = input.UV + tapOffset[0] * _scale * DIRECTION;
-	OUT.Tap1Neg = input.UV - tapOffset[0] * _scale * DIRECTION;
-	OUT.Tap2 = input.UV + tapOffset[1] * _scale * DIRECTION;
-	OUT.Tap2Neg = input.UV - tapOffset[1] * _scale * DIRECTION;
-	OUT.Tap3 = input.UV + tapOffset[2] * _scale * DIRECTION;
-	OUT.Tap3Neg = input.UV - tapOffset[2] * _scale * DIRECTION;
+
 	
 	return OUT;
 }
 
-float4 BlurPS(ScreenBlur input) : COLOR0
+float4 VBlurPS(ScreenVertex input) : COLOR0
 {
 	float color = 0;
 	//color = tex2D(DiffuseMapSamplerScreen, input.UV).r * tapWeight[0];
 	
-	for (int i = 0; i < 9; i++)
+	for (int i = 0; i < 17; i++)
 	{
 		float2 tap = input.UV + tapOffset[i] * _scale * float2 (0,1);
 		color += tex2D(DiffuseMapSamplerScreen, tap) * tapWeight[i+1];
 		float2 tapneg = input.UV - tapOffset[i] * _scale * float2 (0,1);
 		color += tex2D(DiffuseMapSamplerScreen, tapneg) * tapWeight[i+1];
     }
-	for (int i = 0; i < 9; i++)
+	
+	return float4(color, color, color, 1);
+}
+
+float4 HBlurPS(ScreenVertex input) : COLOR0
+{
+	float color = 0;
+	//color = tex2D(DiffuseMapSamplerScreen, input.UV).r * tapWeight[0];
+	for (int i = 0; i < 17; i++)
 	{
 		float2 tap = input.UV + tapOffset[i] * _scale * float2 (1,0);
 		color += tex2D(DiffuseMapSamplerScreen, tap) * tapWeight[i+1];
 		float2 tapneg = input.UV - tapOffset[i] * _scale * float2 (1,0);
 		color += tex2D(DiffuseMapSamplerScreen, tapneg) * tapWeight[i+1];
     }
-
-
-	/*for (int i = 0; i < 13; i++)
-	{
-		float2 tap = input.UV + PixelKernel[i] * _scale * input.Direction;
-		color += tex2D(DiffuseMapSamplerScreen, tap).r * BlurWeights[i];
-    }
-	for (int i = 0; i < 3; i++)
-	{
-		float2 tapneg = input.UV - PixelKernel[i] * _scale * input.Direction;
-		color += tex2D(DiffuseMapSamplerScreen, tapneg).r * BlurWeights[i];
-    }*/
-
-
 	
 	return float4(color, color, color, 1);
 }
+
 
 
 
@@ -346,43 +282,45 @@ ScreenVertex PostProcessVS(ScreenVertex input)
 	return input;
 }
 
-float CalcGaussianWeight(int iSamplePoint)
-{
-	float g = 1.0f / sqrt(2.0f * 3.14159 * g_fSigma * g_fSigma);  
-	return (g * exp(-(iSamplePoint * iSamplePoint) / (2 * g_fSigma * g_fSigma)));
-}
-
-float4 GaussianBlurH (in float2 in_vTexCoord : TEXCOORD0,
-						uniform int iRadius,
-						uniform int bEncodeLogLuv)	: COLOR0
-{
-    float4 vColor = 0;
-	float2 vTexCoord = in_vTexCoord;
-
-    for (int i = -iRadius; i < iRadius; i++)
-    {   
-		float fWeight = CalcGaussianWeight(i);
-		vTexCoord.x = in_vTexCoord.x + (i / g_vSourceDimensions.x);
-		float4 vSample = tex2D(PointSampler0, vTexCoord);
-		/*if (bEncodeLogLuv)
-			vSample = float4(LogLuvDecode(vSample), 1.0f);*/
-		vColor += vSample * fWeight;
-    }
-
-	/*if (bEncodeLogLuv)
-		vColor = LogLuvEncode(vColor.rgb);*/
-	
-	return vColor;
-}
 
 float4  ExposureControl(ScreenBlur input) : COLOR0 
 {
-	return tex2D(DiffuseMapSamplerScreen, input.UV);
-	/*float2 vtc = float2( 1 , 0.5 );
-	float vignette = pow( 1 - ( dot( vtc, vtc ) * 1.0 ), 2.0 );
-	float4 exposed = 1.0 - pow( 2.71, -( vignette * tex2D(DiffuseMapSamplerScreen, input.UV) * 2.0 ) );
-	return exposed;*/
+	//return tex2D(DiffuseMapSamplerScreen, input.UV);
+	float Luminance = 0.08f;
+	static const float fMiddleGray = 0.18f;
+	static const float fWhiteCutoff = 0.8f;
+    float4 Color;
+
+    Color = tex2D( DiffuseMapSamplerScreen, input.UV ) * fMiddleGray / ( Luminance + 0.001f );
+    Color *= ( 1.0f + ( Color / ( fWhiteCutoff * fWhiteCutoff ) ) );
+    Color /= ( 1.0f + Color );
+
+    return Color;
 }
+
+float4 ToneMapPS (ScreenVertex input) : COLOR0
+{
+
+	float exposureLevel = 1.0;
+	float gammaLevel = 0.5;
+	float deFogLevel = 0.0;
+
+	float3 fogColor = { 1.0, 1.0, 1.0 };
+
+    half3 hdrTexelColor = tex2D( DiffuseMapSamplerScreen, input.UV );
+    
+    // Apply de-fogging
+	hdrTexelColor = max( 0, hdrTexelColor - (deFogLevel * fogColor) );
+	
+	// Apply expsosure
+    hdrTexelColor *= pow( 2.0, exposureLevel);
+    
+    // Apply gamma correction (you could use a texture lookups for this)
+	hdrTexelColor = pow( hdrTexelColor, gammaLevel );
+    float4 color = half4( hdrTexelColor.rgb, 1.0 );
+	return color;
+}
+
 
 technique diffuse
 {
@@ -420,27 +358,23 @@ technique bloom
 	}
 }
 
-technique blur
+technique blurH
 {
 	pass p0
 	{
-		VertexShader = compile vs_3_0 BlurVS(float2(0,1));
-		PixelShader  = compile ps_3_0 BlurPS();
+		VertexShader = compile vs_3_0 PostProcessVS();
+		PixelShader  = compile ps_3_0 HBlurPS();
 	}
-	pass p1
-	{
-		VertexShader = compile vs_3_0 BlurVS(float2(1,0));
-		PixelShader  = compile ps_3_0 BlurPS();
-	}
+
 }
 
-technique GaussianBlur
+technique blurV
 {
-    pass p0
-    {
-        VertexShader = compile vs_3_0 PostProcessVS();
-        PixelShader = compile ps_3_0 GaussianBlurH(6, false);
-    }
+	pass p1
+	{
+		VertexShader = compile vs_3_0 PostProcessVS();
+		PixelShader  = compile ps_3_0 VBlurPS();
+	}
 }
 
 technique exposure
@@ -450,4 +384,13 @@ technique exposure
         VertexShader = compile vs_3_0 PostProcessVS();
         PixelShader = compile ps_3_0 ExposureControl();
     }
+}
+
+technique ToneMap
+{
+	pass p0
+	{
+		VertexShader = compile vs_3_0 PostProcessVS();
+        PixelShader = compile ps_3_0 ToneMapPS();
+	}
 }
