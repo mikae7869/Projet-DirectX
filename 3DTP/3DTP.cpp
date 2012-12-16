@@ -20,6 +20,7 @@ D3DXMATRIX		matProj;			// the projection matrix
 D3DXVECTOR3		cameraPosition;		// the position of the camera
 D3DXVECTOR3		cameraLook;			// where the camera is pointing
 D3DXVECTOR3		cameraUp;
+LONG			currPoint;
 
 //Buffer
 LPDIRECT3DVERTEXBUFFER9 ppVertexBuffer;
@@ -272,8 +273,10 @@ bool initDirect3D()
 	upCamera(D3DXVECTOR3(0.0f, 1.0f, 0.0f));
 
     pointCamera(D3DXVECTOR3(-50.0f, 0.0f, 0.0f));
+	currPoint = 0;
 
-   
+
+	
     return true;
 }
 
@@ -706,18 +709,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                 // MOVE LEFT KEY Q
                 case 0x51:
-
                     cameraPosition.x -= 10.0f;
-                    cameraLook.x -= 10.0f;
+                    
                     break;
 
 
                 // MOVE RIGHT KEY D
                 case 0x44:
-
-
                     cameraPosition.x += 10.0f;
-                    cameraLook.x += 10.0f;
+                
                     break;
             }
         break;
@@ -737,38 +737,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         break;
 		case WM_MOUSEMOVE:
-			{
 				long x = 0;
-				long y = 0;
-				
-				y = HIWORD (lParam);
-				x = LOWORD (lParam);
+				long y = 0;				
+				y = GET_Y_LPARAM (lParam);
+				x = GET_X_LPARAM (lParam);
 
-				
-				
-					// rotation positive
-					D3DXVECTOR3 vDirection,vRotAxis;
-					D3DXMATRIX matRotAxis,matRotZ;
-
-					D3DXVec3Normalize(&vDirection,&(cameraLook - cameraPosition)); //create direction vector
-
-					D3DXVec3Cross(&vRotAxis,&vDirection,&cameraUp); //strafe vector
-					D3DXVec3Normalize(&vRotAxis,&vRotAxis);
-
-					//create rotation matrices
-					D3DXMatrixRotationAxis(&matRotAxis, &vRotAxis, y / -360);
-
-					D3DXMatrixRotationZ(&matRotZ,x / -360);
-					//rotate direction
-					D3DXVec3TransformCoord(&vDirection,&vDirection,&(matRotAxis * matRotZ));
-					//rotate up vector
-					D3DXVec3TransformCoord(&cameraUp,&cameraUp,&(matRotAxis * matRotZ));
-					//translate up vector
-					cameraUp = vDirection + cameraLook;
-
-					D3DXMatrixLookAtLH(&matView,&cameraPosition,&cameraLook,&cameraUp);
-			}
-			break;
+				if (currPoint < x)
+					cameraLook.x += x / 2;
+				else
+					cameraLook.x -= x /2 ;
+				currPoint = x;
+		break;
     }
     return DefWindowProc(hWnd, message, wParam, lParam);
 }
