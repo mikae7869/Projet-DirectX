@@ -110,6 +110,9 @@
     <None Include="terrainheight.raw" />
     <None Include="terraintexture.jpg" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="earthlights.jpg" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

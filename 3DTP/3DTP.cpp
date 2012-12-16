@@ -55,6 +55,7 @@ D3DXVECTOR3 LightPosition = D3DXVECTOR3(-100.0f, 50.0f, 0.0f);
 
 // TEXTURES
 LPDIRECT3DTEXTURE9	ppTextEarth;
+LPDIRECT3DTEXTURE9	ppTextShadowEarth;
 LPDIRECT3DTEXTURE9	ppRenderTexture = NULL;
 LPDIRECT3DTEXTURE9	ppBloomTexture = NULL;
 LPDIRECT3DTEXTURE9	ppBlurTexture = NULL;
@@ -168,6 +169,7 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 	ppExposureTexture->GetSurfaceLevel(0, &ppExposureSurface);
 
 	D3DXCreateTextureFromFile(pd3dDevice, L"./earth.jpg", &ppTextEarth);
+	D3DXCreateTextureFromFile(pd3dDevice, L"./earthlights.jpg", &ppTextShadowEarth);
 
 
 	LPD3DXBUFFER compilationErrors;
@@ -401,6 +403,7 @@ void RenderScene ()
 
 	pEffect->SetMatrix(hWorldViewProj, &WorldViewProj);
 	pEffect->SetTexture(hDiffuseMap, ppTextEarth);
+	pEffect->SetTexture("ShadowMap", ppTextShadowEarth);
 	pEffect->SetVector(hCameraPos , &D3DXVECTOR4(cameraPosition, 1.0f));
 	pEffect->SetMatrix("ViewProj", &(meshTranslate * matView * matProj));
 	D3DXComputeNormals(pPlanetMesh, NULL);

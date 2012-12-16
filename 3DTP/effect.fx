@@ -92,10 +92,21 @@ float _scale = 1;
 
 texture2D DiffuseMap;
 texture2D BloomBlurMap;
+texture2D ShadowMap;
 
 sampler2D DiffuseMapSampler = sampler_state
 {
 	Texture		= <DiffuseMap>;
+	MinFilter	= LINEAR;
+	MagFilter	= LINEAR;
+	MipFilter	= LINEAR;
+	AddressU	= WRAP;
+	AddressV	= WRAP;
+};
+
+sampler2D ShadowMapSampler = sampler_state
+{
+	Texture		= <ShadowMap>;
 	MinFilter	= LINEAR;
 	MagFilter	= LINEAR;
 	MipFilter	= LINEAR;
@@ -171,7 +182,8 @@ float4 DiffusePS(VertexOutput input) : COLOR0
 {
 	float4 texel = float4(tex2D(DiffuseMapSampler, float2(input.UV.x,input.UV.y)).rgb, 1);
 
-	float4 color = float4(LightAmbiantColor, 1);
+	//float4 color = float4(LightAmbiantColor, 1);
+	float4 color = float4(tex2D(ShadowMapSampler, float2(input.UV.x,input.UV.y)).rgb, 1);
 	
 	// Get light direction for this fragment
 	float3 lightDir = normalize(input.psPosition - mul(float4(LightPosition, 1.0f), ViewProj));
