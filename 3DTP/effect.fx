@@ -113,7 +113,7 @@ VertexOutput DiffuseVS(VertexInput input)
 {
 	VertexOutput output;
 	output.Position = mul(float4(input.Position, 1.0f), WorldViewProj);
-	output.Normal = input.Normal;
+	output.Normal = mul(input.Normal, (float3x3)WorldViewProj);
 	output.psPosition = output.Position;
 
 	float  p = 3.141592f;
