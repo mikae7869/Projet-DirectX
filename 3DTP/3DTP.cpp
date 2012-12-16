@@ -19,6 +19,7 @@ D3DXMATRIX		matView;			// the view matrix
 D3DXMATRIX		matProj;			// the projection matrix
 D3DXVECTOR3		cameraPosition;		// the position of the camera
 D3DXVECTOR3		cameraLook;			// where the camera is pointing
+D3DXVECTOR3		cameraUp;
 
 //Buffer
 LPDIRECT3DVERTEXBUFFER9 ppVertexBuffer;
@@ -123,6 +124,7 @@ void Release(void);
 void createCamera(float, float);
 void moveCamera(D3DXVECTOR3);
 void pointCamera(D3DXVECTOR3);
+void upCamera(D3DXVECTOR3);
 
 
 /*********************************************************************
@@ -258,7 +260,11 @@ bool initDirect3D()
 
     //initialize camera variables
     moveCamera(D3DXVECTOR3(-50.0f, 0.0f, -200.0f));
+
+	upCamera(D3DXVECTOR3(0.0f, 1.0f, 0.0f));
+
     pointCamera(D3DXVECTOR3(-50.0f, 0.0f, 0.0f));
+
    
     return true;
 }
@@ -325,6 +331,11 @@ void moveCamera(D3DXVECTOR3 vec)
    cameraPosition = vec;
 }
 
+void upCamera (D3DXVECTOR3 vec)
+{
+	cameraUp = vec;
+}
+
 /*************************************************************************
 * pointCamera
 * points the camera a location specified by the passed vector
@@ -332,7 +343,7 @@ void moveCamera(D3DXVECTOR3 vec)
 void pointCamera(D3DXVECTOR3 vec)
 {
     cameraLook = vec;
-    D3DXMatrixLookAtLH(&matView, &cameraPosition, &cameraLook, &D3DXVECTOR3(0.0f, 1.0f, 0.0f));
+    D3DXMatrixLookAtLH(&matView, &cameraPosition, &cameraLook, &cameraUp);
 }
 
 /*************************************************************************
@@ -719,6 +730,103 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PostQuitMessage(0);
             break;
        
+		// handle keyboard events
+        case WM_KEYDOWN:
+            // switch on which key was pressed
+            switch( wParam )
+            {
+                // MOVE UP KEY Z
+                case 0x5A:
+                    cameraPosition.y += 10.0f;
+                    cameraLook.y += 10.0f;
+                    break;
+
+                // MOVE DOWN KEY S
+                case 0x53:
+                    cameraPosition.y -= 10.0f;
+                    cameraLook.y -= 10.0f;
+                    break;
+
+
+                // MOVE LEFT KEY Q
+                case 0x51:
+
+                    cameraPosition.x -= 10.0f;
+                    cameraLook.x -= 10.0f;
+                    break;
+
+
+                // MOVE RIGHT KEY D
+                case 0x44:
+
+
+                    cameraPosition.x += 10.0f;
+                    cameraLook.x += 10.0f;
+                    break;
+            }
+        break;
+		case WM_MOUSEWHEEL:
+			if ((short)HIWORD(wParam) > 0)
+			{
+				//ZOOM IN
+                    cameraPosition.z += 10.0f;
+                    cameraLook.z += 10.0f;
+			}
+			if ((short)HIWORD(wParam) < 0)
+			{
+				//ZOOM OUT	
+				cameraPosition.z -= 10.0f;
+                    cameraLook.z -= 10.0f;              
+			}
+
+        break;
+		case WM_MOUSEMOVE:
+			{
+				long x = 0;
+				long y = 0;
+				
+				y = HIWORD (lParam);
+				x = LOWORD (lParam);
+
+				
+				
+					// rotation positive
+					D3DXVECTOR3 vDirection,vRotAxis;
+					D3DXMATRIX matRotAxis,matRotZ;
+
+					D3DXVec3Normalize(&vDirection,&(cameraLook - cameraPosition)); //create direction vector
+
+					D3DXVec3Cross(&vRotAxis,&vDirection,&cameraUp); //strafe vector
+					D3DXVec3Normalize(&vRotAxis,&vRotAxis);
+
+					//create rotation matrices
+					D3DXMatrixRotationAxis(&matRotAxis, &vRotAxis, y / -360);
+
+					D3DXMatrixRotationZ(&matRotZ,x / -360);
+					//rotate direction
+					D3DXVec3TransformCoord(&vDirection,&vDirection,&(matRotAxis * matRotZ));
+					//rotate up vector
+					D3DXVec3TransformCoord(&cameraUp,&cameraUp,&(matRotAxis * matRotZ));
+					//translate up vector
+					cameraLook = vDirection + cameraPosition;
+
+					D3DXMatrixLookAtLH(&matView,&cameraPosition,&cameraLook,&cameraUp);
+			}
+			break;
+    }
+    return DefWindowProc(hWnd, message, wParam, lParam);
+}
+/*********************************************************************
+* WndProc
+*********************************************************************
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message)
+    {
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            break;
+       
     // handle keyboard events
         case WM_KEYDOWN:
             // switch on which key was pressed
@@ -763,4 +871,4 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
     return DefWindowProc(hWnd, message, wParam, lParam);
-}
+}*/
