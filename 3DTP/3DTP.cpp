@@ -54,7 +54,7 @@ D3DXVECTOR3 LightPosition = D3DXVECTOR3(-100.0f, 50.0f, 0.0f);
 
 // TEXTURES
 LPDIRECT3DTEXTURE9	ppTextEarth;
-LPDIRECT3DTEXTURE9	ppTextSun;
+LPDIRECT3DTEXTURE9	ppTextShadowEarth;
 LPDIRECT3DTEXTURE9	ppRenderTexture = NULL;
 LPDIRECT3DTEXTURE9	ppBloomTexture = NULL;
 LPDIRECT3DTEXTURE9	ppBlurTexture = NULL;
@@ -118,9 +118,7 @@ void RenderBloom ();
 void RenderBlur ();
 void RenderGaussianBlur ();
 void createScreenQuad ();
-void RenderExposure ();
 
-void RenderearthHalo();
 // DirectX functions
 bool initDirect3D();
 void render(void);
@@ -174,7 +172,8 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, char *lpCmdL
 	ppTempTexture->GetSurfaceLevel(0, &ppTempSurface);
 
 	D3DXCreateTextureFromFile(pd3dDevice, L"./earth.jpg", &ppTextEarth);
-	D3DXCreateTextureFromFile(pd3dDevice, L"./sun2.jpg", &ppTextSun);
+	D3DXCreateTextureFromFile(pd3dDevice, L"./earthlights.jpg", &ppTextShadowEarth);
+
 
 	LPD3DXBUFFER compilationErrors;
 	LPCWSTR pSrcFile = L"./effect.fx";
@@ -281,20 +280,12 @@ void render(void)
     if( NULL == pd3dDevice )
         return;
 
-    // make the angle variable so we can change it each frame
-    //static int angle = 0;
-
-
-
     createCamera(ZNEAR, ZFAR);  // near clip plane, far clip plane
     pointCamera(cameraLook);
 
     pd3dDevice->BeginScene();	
 
 	RenderScene ();
-
-	//RenderearthHalo ();
-	//RenderExposure ();
 
 	RenderBloom();
 
@@ -398,6 +389,7 @@ void RenderScene ()
 
 	pEffect->SetMatrix(hWorldViewProj, &WorldViewProj);
 	pEffect->SetTexture(hDiffuseMap, ppTextEarth);
+	pEffect->SetTexture("ShadowMap", ppTextShadowEarth);
 	pEffect->SetVector(hCameraPos , &D3DXVECTOR4(cameraPosition, 1.0f));
 	pEffect->SetMatrix("ViewProj", &(meshTranslate * matView * matProj));
 	D3DXComputeNormals(pPlanetMesh, NULL);
@@ -430,7 +422,7 @@ void RenderScene ()
 	WorldViewProj =  meshTranslate * matView * matProj;
 
 	pEffect->SetMatrix(hWorldViewProj, &WorldViewProj);
-	pEffect->SetTexture(hDiffuseMap, ppTextSun);
+	//pEffect->SetTexture(hDiffuseMap, ppTextSun);
 	pSunMesh->GetVertexBuffer(&ppVertexBuffer);
 	pSunMesh->GetIndexBuffer(&ppIndexBuffer);
 
@@ -450,93 +442,6 @@ void RenderScene ()
 
 }
 
-void RenderExposure ()
-{
-
-	D3DXMATRIX WorldViewProj, meshMat;
-	unsigned int cPasses, iPass;
-
-	ppExposureTexture->GetSurfaceLevel(0,&ppExposureSurface);
-	pd3dDevice->SetRenderTarget(0, ppExposureSurface);
-	ppExposureSurface->Release();
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
-
-	
-	pEffect->SetTechnique("exposure");
-
-	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
-	pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
-	pEffect->Begin(&cPasses, 0);
-	for (iPass = 0; iPass < cPasses; ++iPass)
-	{
-		pEffect->BeginPass(iPass);
-		pEffect->CommitChanges();
-		pd3dDevice->SetVertexDeclaration(ppScreenDecl);
-		DrawFullScreenQuad(0.0f, 0.0f, 1.0f, 1.0f);
-		pEffect->EndPass();
-	}
-	pEffect->End();
-
-
-
-	pd3dDevice->SetRenderTarget(0, ppBackBuffer);
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
-
-	
-	pEffect->SetTechnique("ToneMap");
-
-	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
-	pEffect->SetTexture(hDiffuseMap, ppExposureTexture);
-	pEffect->Begin(&cPasses, 0);
-	for (iPass = 0; iPass < cPasses; ++iPass)
-	{
-		pEffect->BeginPass(iPass);
-		pEffect->CommitChanges();
-		pd3dDevice->SetVertexDeclaration(ppScreenDecl);
-		DrawFullScreenQuad(0.0f, 0.0f, 1.0f, 1.0f);
-		pEffect->EndPass();
-	}
-	pEffect->End();
-}
-
-void RenderearthHalo ()
-{
-	D3DXMATRIX WorldViewProj, meshMat;
-	unsigned int cPasses, iPass;
-
-	ppTempTexture->GetSurfaceLevel(0,&ppTempSurface);
-	pd3dDevice->SetRenderTarget(0, ppTempSurface);
-	ppTempSurface->Release();
-	pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
-
-	
-	pEffect->SetTechnique("earthHaloHBlur");
-	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
-	pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
-
-	pEffect->Begin(&cPasses, 0);
-	pEffect->BeginPass(0);
-	pEffect->CommitChanges();
-	pd3dDevice->SetVertexDeclaration(ppScreenDecl);
-	DrawFullScreenQuad(0.0f, 0.0f, 1.0f, 1.0f);
-	pEffect->EndPass();
-	pEffect->End();
-
-	ppExposureTexture->GetSurfaceLevel(0,&ppExposureSurface);
-	pd3dDevice->SetRenderTarget(0, ppExposureSurface);
-	ppExposureSurface->Release();
-	pEffect->SetTechnique("earthHaloVBlur");
-	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
-	pEffect->SetTexture(hDiffuseMap, ppTempTexture);
-
-	pEffect->Begin(&cPasses, 0);
-	pEffect->BeginPass(0);
-	pEffect->CommitChanges();
-	pd3dDevice->SetVertexDeclaration(ppScreenDecl);
-	DrawFullScreenQuad(0.0f, 0.0f, 1.0f, 1.0f);
-	pEffect->EndPass();
-	pEffect->End();
-}
 
 void RenderBloom ()
 {
@@ -580,7 +485,6 @@ void RenderBlur ()
 
 	
 	pEffect->SetTechnique("blurH");
-	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
 	pEffect->SetTexture(hDiffuseMap, ppBloomTexture);
 
 	pEffect->Begin(&cPasses, 0);
@@ -595,7 +499,6 @@ void RenderBlur ()
 	pd3dDevice->SetRenderTarget(0, ppBlurSurface);
 	ppBlurSurface->Release();
 	pEffect->SetTechnique("blurV");
-	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
 	pEffect->SetTexture(hDiffuseMap, ppExposureTexture);
 
 	pEffect->Begin(&cPasses, 0);
@@ -618,7 +521,6 @@ void  RenderFinal ()
 
 	
 	pEffect->SetTechnique("final");
-	//pEffect->SetTexture(hDiffuseMap, ppTextEarth);
 	pEffect->SetTexture(hDiffuseMap, ppRenderTexture);
 	pEffect->SetTexture(hBloomBlurMap, ppBlurTexture);
 	pEffect->Begin(&cPasses, 0);
@@ -658,10 +560,6 @@ void createScreenQuad ()
 	ppScreenVertexBuffer->Lock(0, sizeof(svQuad), (void**)&pVoid, 0);    // lock the vertex buffer
 	memcpy(pVoid, svQuad, sizeof(svQuad));    // copy the vertices to the locked buffer
 	ppScreenVertexBuffer->Unlock();    // unlock the vertex buffer
-	/*short indices[] =
-	{
-		1,3,0, 2
-	};*/
 	short indices[] =
 	{
 		3,1,0, 0,2,3

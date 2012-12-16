@@ -56,10 +56,21 @@ float _scale = 1;
 
 texture2D DiffuseMap;
 texture2D BloomBlurMap;
+texture2D ShadowMap;
 
 sampler2D DiffuseMapSampler = sampler_state
 {
 	Texture		= <DiffuseMap>;
+	MinFilter	= LINEAR;
+	MagFilter	= LINEAR;
+	MipFilter	= LINEAR;
+	AddressU	= WRAP;
+	AddressV	= WRAP;
+};
+
+sampler2D ShadowMapSampler = sampler_state
+{
+	Texture		= <ShadowMap>;
 	MinFilter	= LINEAR;
 	MagFilter	= LINEAR;
 	MipFilter	= LINEAR;
@@ -135,7 +146,8 @@ float4 DiffusePS(VertexOutput input) : COLOR0
 {
 	float4 texel = float4(tex2D(DiffuseMapSampler, float2(input.UV.x,input.UV.y)).rgb, 1);
 
-	float4 color = float4(LightAmbiantColor, 1);
+	//float4 color = float4(LightAmbiantColor, 1);
+	float4 color = float4(tex2D(ShadowMapSampler, float2(input.UV.x,input.UV.y)).rgb, 1);
 	
 	// Get light direction for this fragment
 	float3 lightDir = normalize(input.psPosition - mul(float4(LightPosition, 1.0f), ViewProj));
@@ -162,17 +174,7 @@ ScreenVertex FinalVS(ScreenVertex input)
 
 float4 FinalPS(ScreenVertex input) : COLOR0
 {
-	// Nous récupèrons les 2 textures : le bloom et l'image.
-	/*float4 tbloom = tex2D(BloomMapSamplerScreen, input.UV);
-	float4 tbase = tex2D(DiffuseMapSamplerScreen, input.UV);
-
-	// Désaturation d'image de base pour ne pas avoir de couleurs trop vives une fois la texture de bloom ajoutée.
-	// Plus l'intensité de la lumière est forte, plus on la diminue : on prend l'opposé en RGB.
-	tbase = tbase * (1 - tbloom);
- 
-	// Finalement, nous assemblons les 2 images.
-	return  tbase + tbloom;
-	//return float4(1, 0, 0, 1);*/
+	//Tone Mapping
 	float2 inTex = input.UV;
 
 	float4 original = tex2D( DiffuseMapSamplerScreen, inTex);
@@ -183,7 +185,7 @@ float4 FinalPS(ScreenVertex input) : COLOR0
 	blur *= 2;
 	blur = pow (blur, 0.55);
 
-	float4 color = lerp( original, blur, 0.4f );
+	float4 color = lerp( original, blur, 0.4f ); //Add
 
 	return color;
 }
@@ -215,7 +217,6 @@ ScreenVertex BloomVS(ScreenVertex input)
 float4 BloomPS(ScreenVertex input) : COLOR0
 {
 	float4 pixel = float4(tex2D(DiffuseMapSamplerScreen, float2(input.UV.x,input.UV.y)).rgb, 1);
-	//float intensity = dot(pixel, float4(0.3,0.59,0.11,0);
 	float4 diff = pixel - float4(0.9,0.9,0.9,0);
 	if (diff.x <= 0 || diff.y <= 0 || diff.z <= 0 )
 	{
@@ -320,37 +321,6 @@ float4 ToneMapPS (ScreenVertex input) : COLOR0
 	return color;
 }
 
-float4 earthHaloHBlurPS (ScreenVertex input) : COLOR0
-{
-	
-	float color = tex2D(DiffuseMapSamplerScreen, input.UV).r * tapWeight[0];
-	
-	for (int i = 0; i < 2; i++)
-	{
-		float2 tap = input.UV + tapOffset[i] * _scale * float2 (0,1);
-		color += tex2D(DiffuseMapSamplerScreen, tap) * tapWeight[i+1];
-		float2 tapneg = input.UV - tapOffset[i] * _scale * float2 (0,1);
-		color += tex2D(DiffuseMapSamplerScreen, tapneg) * tapWeight[i+1];
-    }
-	
-	return float4(color, color, color, 1);
-}
-
-float4 earthHaloVBlurPS (ScreenVertex input) : COLOR0
-{
-	float color = 0;
-	color = tex2D(DiffuseMapSamplerScreen, input.UV).r * tapWeight[0];
-	
-	for (int i = 0; i < 2; i++)
-	{
-		float2 tap = input.UV + tapOffset[i] * _scale * float2 (1,0);
-		color += tex2D(DiffuseMapSamplerScreen, tap) * tapWeight[i+1];
-		float2 tapneg = input.UV - tapOffset[i] * _scale * float2 (1,0);
-		color += tex2D(DiffuseMapSamplerScreen, tapneg) * tapWeight[i+1];
-    }
-	
-	return float4(color, color, color, 1);
-}
 
 technique diffuse
 {
@@ -422,23 +392,5 @@ technique ToneMap
 	{
 		VertexShader = compile vs_3_0 PostProcessVS();
         PixelShader = compile ps_3_0 ToneMapPS();
-	}
-}
-
-technique earthHaloHBlur
-{
-	pass p0
-	{
-		VertexShader = compile vs_3_0 PostProcessVS();
-        PixelShader = compile ps_3_0 earthHaloHBlurPS();
-	}
-}
-
-technique earthHaloVBlur
-{
-	pass p0
-	{
-		VertexShader = compile vs_3_0 PostProcessVS();
-        PixelShader = compile ps_3_0 earthHaloVBlurPS();
 	}
 }
