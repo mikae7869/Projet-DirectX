@@ -5,6 +5,7 @@ shared float3	LightAmbiantColor;
 shared float3	LightSpecularColor;
 shared float	LightDistance;
 shared float3	CameraPos;
+shared matrix	ViewProj;
 
 float2	g_vSourceDimensions;
 float2	g_vDestinationDimensions;
@@ -173,7 +174,8 @@ float4 DiffusePS(VertexOutput input) : COLOR0
 	float4 color = float4(LightAmbiantColor, 1);
 	
 	// Get light direction for this fragment
-	float3 lightDir = normalize(input.psPosition - LightPosition);
+	float3 lightDir = normalize(input.psPosition - mul(float4(LightPosition, 1.0f), ViewProj));
+	//float3 lightDir = normalize(input.psPosition - LightPosition);
 
 	// Note: Non-uniform scaling not supported
 	float diffuseLighting = saturate(dot(input.Normal, -lightDir));
